@@ -5,12 +5,13 @@ import { cloneElement, ComponentProps, DragEventHandler, MouseEventHandler, Reac
 enum EventTypes {
 	MouseDown = 'mousedown',
 	MouseUp = 'mouseup', 
+	MouseMove = 'mousemove',
 	TouchStart = 'touchstart',
 	TouchEnd = 'touchend'
 
 };
 function Vertex () {
-	const [transform, setTransform] = useState<[number, number, number]>([0, 0, 0]);
+	const [transform, setTransform] = useState<[number, number]>([0, 0]);
 	const handleDrag = (event: React.MouseEvent | React.TouchEvent) => {
 		event.stopPropagation();
 		event.nativeEvent.stopImmediatePropagation();
@@ -20,17 +21,25 @@ function Vertex () {
 			console.log(EventTypes.MouseDown)
 		if (event.type === EventTypes.MouseUp)
 			console.log(EventTypes.MouseUp)
+		if (event.type === EventTypes.MouseMove){
+			console.log(EventTypes.MouseMove)
+			setTransform(([x, y]) => [x + 1, y + 1])
+		}
 		if (event.type === EventTypes.TouchStart)
 			console.log(EventTypes.TouchStart)
 		if (event.type === EventTypes.TouchEnd)
 			console.log(EventTypes.TouchEnd)
 	};
+	const [x, y] = transform;
 	return (
 		<div
-			className='size-10 bg-blue-500'
+			className='absolute size-10 bg-blue-500'
+			style={{ right: x, top: y}}
+			draggable
 			onClick={handleDrag} // stop the propagation to parent
 			onMouseDown={handleDrag}	
 			onMouseUp={ handleDrag}
+			onMouseMove={handleDrag}
 			onTouchStart={handleDrag}
 			onTouchEnd={handleDrag}
 		/>
