@@ -1,16 +1,27 @@
 'use client'
+import * as d3 from 'd3';
+import { ComponentProps, ReactElement, ReactNode, useEffect, useRef, useState } from "react";
 
-import { ReactNode, useState } from "react";
-
-const Vertex = () => <span className='size-12 bg-blue-500 rounded-full'/>;
+function Vertex () {
+	return <g/>
+}
+//type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
+type VertexComponent = ReactElement<ComponentProps<typeof Vertex>>;
 export default function Grid() {
-	const [vertices, setVertices] = useState<Array<ReactNode>>([]);
-	console.log(vertices);
+	const svgRef = useRef<SVGSVGElement | null>(null);
+	const [vertices, setVertices] = useState<VertexComponent[]>([]);
+	useEffect(() => {
+		if(!svgRef.current) return;
+		svgRef.current.onclick = 
+			() => void setVertices(prev => [...prev, <Vertex key={prev.length}/>]);
+		//const svg = d3.select(svgRef.current);
+	}, [])
   return (
-	<div 
+	<svg 
 		className='bg-red-500 size-96 relative flex flex-wrap m-auto' 
-		onClick={() => setVertices(prev => [...prev, <Vertex key={prev.length}/>])}>
+		ref={svgRef}
+	>
 		{vertices}
-	</div>
+	</svg>
   );
 }
