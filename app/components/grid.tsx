@@ -1,9 +1,18 @@
 'use client'
 import * as d3 from 'd3';
-import { ComponentProps, ReactElement, ReactNode, useEffect, useRef, useState } from "react";
+import { cloneElement, ComponentProps, ReactElement, ReactNode, useEffect, useRef, useState } from "react";
 
-function Vertex () {
-	return <g/>
+interface VertexProps { transform ?: string };
+function Vertex ({ transform }: VertexProps) {
+	return (
+		<circle
+			r={10}
+			stroke='black'
+			fill='white'
+			className='transition-colors duration-200 hover:fill-gray-200'
+			transform={transform || ''}
+		/>
+	);
 }
 //type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
 type VertexComponent = ReactElement<ComponentProps<typeof Vertex>>;
@@ -14,11 +23,21 @@ export default function Grid() {
 		if(!svgRef.current) return;
 		svgRef.current.onclick = 
 			() => void setVertices(prev => [...prev, <Vertex key={prev.length}/>]);
-		//const svg = d3.select(svgRef.current);
-	}, [])
+		const svg = d3.select(svgRef.current);
+		svg.call(
+			d3.zoom<SVGSVGElement, unknown>()
+				.scaleExtent([0.15, 4.0])
+				.on('zoom', event => {
+				console.log('transform', String(event.transform));
+				setVertices(state =>
+					    state.map(v => cloneElement(v, { transform: String(event.transform) }))
+					)
+				})
+		)
+	})
   return (
 	<svg 
-		className='bg-red-500 size-96 relative flex flex-wrap m-auto' 
+		className='bg-red-500 size-96 relative  m-auto' 
 		ref={svgRef}
 	>
 		{vertices}
