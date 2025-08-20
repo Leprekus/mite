@@ -6,42 +6,46 @@ enum EventTypes {
 	MouseDown = 'mousedown',
 	MouseUp = 'mouseup', 
 	MouseMove = 'mousemove',
+	MouseLeave = 'mouseleave',
 	TouchStart = 'touchstart',
 	TouchEnd = 'touchend'
 
 };
 function Vertex () {
-	const [transform, setTransform] = useState<[number, number]>([0, 0]);
-	const handleDrag = (event: React.MouseEvent | React.TouchEvent) => {
+	const [transform, setTransform] = useState<[number, number, number, number]>([0, 0, 0, 0]);
+	const [_, x, __, y] = transform;
+	const [isDragging, setIsDragging] = useState<boolean>(false);
+	const handleDrag = (event: React.MouseEvent) => {
 		event.stopPropagation();
 		event.nativeEvent.stopImmediatePropagation();
 		event.nativeEvent.stopPropagation();
 		event.preventDefault();
-		if (event.type === EventTypes.MouseDown)
-			console.log(EventTypes.MouseDown)
-		if (event.type === EventTypes.MouseUp)
-			console.log(EventTypes.MouseUp)
-		if (event.type === EventTypes.MouseMove){
-			console.log(EventTypes.MouseMove)
-			setTransform(([x, y]) => [x + 1, y + 1])
+		if (event.type === EventTypes.MouseDown) {
+			setIsDragging(true); 
+			//store initial position (x, y) as 'prevX', 'prevY'
+			setTransform(([_, x, __, y]) => [event.clientX, x, event.clientY, y])
 		}
-		if (event.type === EventTypes.TouchStart)
-			console.log(EventTypes.TouchStart)
-		if (event.type === EventTypes.TouchEnd)
-			console.log(EventTypes.TouchEnd)
+		if (event.type === EventTypes.MouseUp){
+			setIsDragging(false);
+		}
+		if (isDragging && event.type === EventTypes.MouseMove){
+			const { clientX: cx, clientY: cy } = event;
+			setTransform(([px, x, py, y]) => [cx, x - cx + px, cy, y + cy - py]);
+		}
+		if(event.type === EventTypes.MouseLeave){
+			setIsDragging(false);
+		}
 	};
-	const [x, y] = transform;
 	return (
 		<div
 			className='absolute size-10 bg-blue-500'
 			style={{ right: x, top: y}}
 			draggable
-			onClick={handleDrag} // stop the propagation to parent
 			onMouseDown={handleDrag}	
 			onMouseUp={ handleDrag}
 			onMouseMove={handleDrag}
-			onTouchStart={handleDrag}
-			onTouchEnd={handleDrag}
+			onMouseLeave={handleDrag}
+			
 		/>
 	);
 }
