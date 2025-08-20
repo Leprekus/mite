@@ -11,57 +11,70 @@ enum EventTypes {
 	TouchEnd = 'touchend'
 
 };
+type VertexComponent = ReactElement<ComponentProps<typeof Vertex>>;
 function Vertex () {
-	const [transform, setTransform] = useState<[number, number, number, number]>([0, 0, 0, 0]);
-	const [_, x, __, y] = transform;
-	const [isDragging, setIsDragging] = useState<boolean>(false);
-	const handleDrag = (event: React.MouseEvent) => {
-		event.stopPropagation();
-		event.nativeEvent.stopImmediatePropagation();
-		event.nativeEvent.stopPropagation();
-		event.preventDefault();
-		if (event.type === EventTypes.MouseDown) {
-			setIsDragging(true); 
-			//store initial position (x, y) as 'prevX', 'prevY'
-			setTransform(([_, x, __, y]) => [event.clientX, x, event.clientY, y])
-		}
-		if (event.type === EventTypes.MouseUp){
-			setIsDragging(false);
-		}
-		if (isDragging && event.type === EventTypes.MouseMove){
-			const { clientX: cx, clientY: cy } = event;
-			setTransform(([px, x, py, y]) => [cx, x - cx + px, cy, y + cy - py]);
-		}
-		if(event.type === EventTypes.MouseLeave){
-			setIsDragging(false);
-		}
-	};
 	return (
-		<div
-			className='absolute size-10 bg-blue-500'
-			style={{ right: x, top: y}}
-			draggable
-			onMouseDown={handleDrag}	
-			onMouseUp={ handleDrag}
-			onMouseMove={handleDrag}
-			onMouseLeave={handleDrag}
-			
+		<circle
 		/>
 	);
 }
+
+
 //type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
-type VertexComponent = ReactElement<ComponentProps<typeof Vertex>>;
 export default function Grid() {
 	const [vertexCount, setVertexCount] = useState<number>(0);
+	const svgRef = useRef<SVGSVGElement | null>(null);
 	useEffect(() => {
+		if(!svgRef.current) return;
+		const width = 384,
+		      height = width;
+		const nodes = Array.from({ length: 60 }, () => ({
+			x: (Math.random() * 2) - 1,
+			y: (Math.random() * 2) - 1,
+			r: 20
+		}));
+		const links = nodes.map((_, i) => ({
+			source: nodes[i], 
+			target: nodes[Math.min(i + 1, nodes.length - 1)]
+		}));
+		const svg = d3.select(svgRef.current);
+		const simulation = d3.forceSimulation(nodes.slice())
+			.force('charge', d3.forceManyBody())
+			.force('link', d3.forceLink(links).strength(1).distance(20))
+			
+		const drag = d3.drag()
+			.subject(({x, y}) => simulation.find(x - width / 2, y - height / 2, 40))
+			.on('start', event => {
+				if(!event.active) simulation.alphaTarget(0.3).restart();
+				event.subject.fx = event.subject.x;
+				event.subject.fy = event.subject.y;
+			})
+			.on('drag', event => {
+				event.subject.fx = event.x;
+				event.subject.fy = event.y;
+			})
+			.on('end', event => {
+				if(!event.active) simulation.alphaTarget(0);
+				event.subject.fx = null;
+				event.subject.fy = null;
+			});
+		svg.selectAll('circle')
+			.data(nodes)
+			.enter()
+			.append('circle')
+			.attr('cx', 200)	
+			.attr('cy', 200)
+			.attr('r', 20)
+			.attr('style', 'fill: blue; stroke: black; stroke-width: 2;');
+	
+
 	}, []);
 
   return (
-	<div 
+	<svg
 		className='bg-red-500 size-96 relative  m-auto' 
-		onMouseDown={() => setVertexCount(prev => prev + 1)}
-	>
-		{Array.from({ length: vertexCount }, (_, i) => <Vertex key={i}/>)}
-	</div>
+		//onMouseDown={() => setVertexCount(prev => prev + 1)}
+		ref={svgRef}
+	/>
   );
 }
