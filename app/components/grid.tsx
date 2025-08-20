@@ -11,38 +11,66 @@ enum EventTypes {
 	TouchEnd = 'touchend'
 
 };
-type VertexComponent = ReactElement<ComponentProps<typeof Vertex>>;
-function Vertex () {
-	return (
-		<circle
-		/>
-	);
-}
-
 
 //type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
+type Vertex = {
+	x: number;
+	y: number;
+	r: number;
+	fx?: number | null;
+	fy?: number | null;
+} | undefined;
 export default function Grid() {
-	const [vertexCount, setVertexCount] = useState<number>(0);
-	const svgRef = useRef<SVGSVGElement | null>(null);
+	const canvasRef = useRef<HTMLCanvasElement| null>(null);
 	useEffect(() => {
-		if(!svgRef.current) return;
+		if(!canvasRef.current) return;
 		const width = 384,
 		      height = width;
-		const nodes = Array.from({ length: 60 }, () => ({
+		const radius = 20;
+		const Nodes = Array.from({ length: 60 }, () => ({
 			x: (Math.random() * 2) - 1,
 			y: (Math.random() * 2) - 1,
-			r: 20
+			r: radius
 		}));
-		const links = nodes.map((_, i) => ({
-			source: nodes[i], 
-			target: nodes[Math.min(i + 1, nodes.length - 1)]
+		const Links = Nodes.map((_, i) => ({
+			source: Nodes[i], 
+			target: Nodes[Math.min(i + 1, Nodes.length - 1)]
 		}));
-		const svg = d3.select(svgRef.current);
-		const simulation = d3.forceSimulation(nodes.slice())
-			.force('charge', d3.forceManyBody())
-			.force('link', d3.forceLink(links).strength(1).distance(20))
+
+		const nodes = Nodes.slice();
+		const links = Links.slice();
+
+		canvasRef.current.width = width;
+		canvasRef.current.height = height;
+		const context = canvasRef.current.getContext('2d');
+		if(!context) throw Error('no context');
+
+		const simulation = d3.forceSimulation(nodes)
+			.force('charge', d3.forceManyBody().strength(-30))
+			.force('link', d3.forceLink(links).strength(1).distance(radius).iterations(10))
+			.on('tick', () => {
+				context.clearRect(0, 0, width, height);
+				context.save();
+				context.translate(width / 2, height / 2);
+				context.beginPath();
+				for(const d of links) {
+					context.moveTo(d.source.x, d.source.y);
+					context.lineTo(d.target.x, d.target.y);
+				}
+				context.strokeStyle = '#aaa';
+				context.stroke();
+				context.beginPath();
+				for(const d of nodes) {
+					context.moveTo(d.x + 3, d.y);
+					context.arc(d.x, d.y, 3, 0, 2 * Math.PI);
+				}
+				context.fill();
+				context.strokeStyle = '#fff';
+				context.stroke();
+				context.restore();
+			})
 			
-		const drag = d3.drag()
+		const drag = d3.drag<HTMLCanvasElement, unknown, Vertex>()
 			.subject(({x, y}) => simulation.find(x - width / 2, y - height / 2, 40))
 			.on('start', event => {
 				if(!event.active) simulation.alphaTarget(0.3).restart();
@@ -58,23 +86,15 @@ export default function Grid() {
 				event.subject.fx = null;
 				event.subject.fy = null;
 			});
-		svg.selectAll('circle')
-			.data(nodes)
-			.enter()
-			.append('circle')
-			.attr('cx', 200)	
-			.attr('cy', 200)
-			.attr('r', 20)
-			.attr('style', 'fill: blue; stroke: black; stroke-width: 2;');
-	
 
+			d3.select(context.canvas).call(drag).node();
 	}, []);
 
   return (
-	<svg
-		className='bg-red-500 size-96 relative  m-auto' 
+	<canvas
+		className='bg-red-500' 
 		//onMouseDown={() => setVertexCount(prev => prev + 1)}
-		ref={svgRef}
+		ref={canvasRef}
 	/>
   );
 }
