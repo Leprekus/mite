@@ -24,7 +24,7 @@ export default function Grid() {
 	const canvasRef = useRef<HTMLCanvasElement| null>(null);
 	useEffect(() => {
 		if(!canvasRef.current) return;
-		const width = 384,
+		const width = Math.min(window.innerWidth, window.innerHeight),
 		      height = width;
 		const radius = 20;
 		const Nodes = Array.from({ length: 60 }, () => ({
@@ -40,14 +40,15 @@ export default function Grid() {
 		const nodes = Nodes.slice();
 		const links = Links.slice();
 
-		canvasRef.current.width = width;
-		canvasRef.current.height = height;
-		const context = canvasRef.current.getContext('2d');
+		const canvas = canvasRef.current;
+		canvas.width = width;
+		canvas.height = height;
+		const context = canvas.getContext('2d');
 		if(!context) throw Error('no context');
 
 		const simulation = d3.forceSimulation(nodes)
 			.force('charge', d3.forceManyBody().strength(-30))
-			.force('link', d3.forceLink(links).strength(1).distance(radius).iterations(10))
+			.force('link', d3.forceLink(links).strength(1).distance(radius * 4).iterations(10))
 			.on('tick', () => {
 				context.clearRect(0, 0, width, height);
 				context.save();
@@ -61,8 +62,8 @@ export default function Grid() {
 				context.stroke();
 				context.beginPath();
 				for(const d of nodes) {
-					context.moveTo(d.x + 3, d.y);
-					context.arc(d.x, d.y, 3, 0, 2 * Math.PI);
+					context.moveTo(d.x + radius, d.y);
+					context.arc(d.x, d.y, radius, 0, 2 * Math.PI);
 				}
 				context.fill();
 				context.strokeStyle = '#fff';
@@ -73,21 +74,35 @@ export default function Grid() {
 		const drag = d3.drag<HTMLCanvasElement, unknown, Vertex>()
 			.subject(({x, y}) => simulation.find(x - width / 2, y - height / 2, 40))
 			.on('start', event => {
+				//ensures each event starts from an initial 'restart' state
+				//otherwise it freezes and prevents subsequent 'start' events from running
 				if(!event.active) simulation.alphaTarget(0.3).restart();
 				event.subject.fx = event.subject.x;
 				event.subject.fy = event.subject.y;
 			})
 			.on('drag', event => {
+				//update the (x, y) positions
 				event.subject.fx = event.x;
 				event.subject.fy = event.y;
 			})
 			.on('end', event => {
-				if(!event.active) simulation.alphaTarget(0);
+				if(!event.active) simulation.alphaTarget(0); //i think this saves the simulation in the 'end' state.
 				event.subject.fx = null;
 				event.subject.fy = null;
 			});
 
 			d3.select(context.canvas).call(drag).node();
+			const linkForce = simulation.force('link');
+			if(!linkForce || !('link' in linkForce)) throw new Error('linkForce is undefined');
+			(linkForce as d3.ForceLink<Node, d3.SimulationLinkDatum<Node>>).initialize(nodes, () => Math.random());
+			canvas.onclick = () => {
+				const popped = simulation.nodes().pop();
+			}
+			return () => {
+				if(!canvas) return;
+				canvas.onclick = null;
+			};
+			
 	}, []);
 
   return (
