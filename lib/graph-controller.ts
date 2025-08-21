@@ -19,6 +19,7 @@ export default class GraphController {
     private window: Window & typeof globalThis;
     private width: number;
     private height: number;
+    private radius: number;
     private initialNodes: Vertex[];
     private initialLinks: LinkDatum[];
     private nodes: Vertex[];
@@ -37,6 +38,7 @@ export default class GraphController {
             this.window.innerHeight,
             this.window.innerWidth
         );
+        this.radius = 20;
         this.height = this.width;
         this.initialNodes = initialNodes;
         this.initialLinks = initialLinks;
@@ -53,8 +55,7 @@ export default class GraphController {
     }
 
     private SimulationInit() {
-        const radius = 20;
-        const simulation = d3.forceSimulation(this.nodes)
+        return d3.forceSimulation(this.nodes)
 			.force('charge', d3.forceManyBody().strength(-30))
 			.force('link', d3.forceLink(this.links).strength(1)
                               .distance(radius * 4).iterations(10))
@@ -71,18 +72,23 @@ export default class GraphController {
 				this.context.stroke();
 				this.context.beginPath();
 				for(const d of this.nodes) {
-                    this.context.moveTo(d.x + radius, d.y);
-					this.context.arc(d.x, d.y, radius, 0, 2 * Math.PI);
+                    this.context.moveTo(d.x + this.radius, d.y);
+					this.context.arc(d.x, d.y, this.radius, 0, 2 * Math.PI);
 				}
 				this.context.fill();
 				this.context.strokeStyle = '#fff';
 				this.context.stroke();
 				this.context.restore();
 			});
-        if(simulation === undefined) throw Error('simulation is undefined') 
-        const drag = 
-            d3.drag<HTMLCanvasElement, unknown, Vertex>()
-			.subject(({x, y}) => simulation.find(x - width / 2, y - height / 2, 40))
+        
+
+			
+
+    }
+    private DragInit(simulation: d3.Simulation<Vertex, undefined>) {
+        return  d3.drag<HTMLCanvasElement, unknown, Vertex | undefined>()
+			.subject(({x, y}): Vertex | undefined => 
+                simulation.find(x - this.width / 2, y - this.height / 2, 40))
 			.on('start', event => {
 				//ensures each event starts from an initial 'restart' state
 				//otherwise it freezes and prevents subsequent 'start' events from running
@@ -100,11 +106,9 @@ export default class GraphController {
 				event.subject.fx = null;
 				event.subject.fy = null;
 			});
-
-			
-
     }
     init() {
-
+        const simulation = this.SimulationInit();
+        this.DragInit(simulation);
     }
 }
