@@ -27,18 +27,20 @@ export default function Grid() {
 		const width = Math.min(window.innerWidth, window.innerHeight),
 		      height = width;
 		const radius = 20;
-		const Nodes = Array.from({ length: 60 }, () => ({
+		let Nodes = Array.from({ length: 60 }, (_, i) => ({
+			id: i,
 			x: (Math.random() * 2) - 1,
 			y: (Math.random() * 2) - 1,
 			r: radius
 		}));
 		const Links = Nodes.map((_, i) => ({
-			source: Nodes[i], 
-			target: Nodes[Math.min(i + 1, Nodes.length - 1)]
+			source: i, 
+			target: Math.min(i + 1, Nodes.length - 1)
 		}));
 
-		const nodes = Nodes.slice();
-		const links = Links.slice();
+		const nodes = Nodes.map(n => Object.create(n));
+		const links = Links.map(n => Object.create(n));
+		console.log(Nodes, nodes);
 
 		const canvas = canvasRef.current;
 		canvas.width = width;
@@ -93,8 +95,10 @@ export default function Grid() {
 
 			d3.select(context.canvas).call(drag).node();
 			const linkForce = simulation.force('link');
-			if(!linkForce || !('link' in linkForce)) throw new Error('linkForce is undefined');
-			(linkForce as d3.ForceLink<Node, d3.SimulationLinkDatum<Node>>).initialize(nodes, () => Math.random());
+			console.log({ linkForce })
+			if(!linkForce) 
+				throw new Error('linkForce is undefined');
+			linkForce!.initialize(nodes, () => Math.random());
 			canvas.onclick = () => {
 				const popped = simulation.nodes().pop();
 			}
