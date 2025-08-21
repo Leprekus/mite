@@ -1,18 +1,8 @@
 'use client'
 import GraphController, { LinkDatum, Vertex } from '@/lib/graph-controller';
-import * as d3 from 'd3';
-import { cloneElement, ComponentProps, DragEventHandler, MouseEventHandler, ReactElement, ReactNode, useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
-enum EventTypes {
-	MouseDown = 'mousedown',
-	MouseUp = 'mouseup', 
-	MouseMove = 'mousemove',
-	MouseLeave = 'mouseleave',
-	TouchStart = 'touchstart',
-	TouchEnd = 'touchend'
-
-};
-
+const menuItems = ['Start', 'Step Forward', 'Step Back', 'Clear', 'Reset'];
 //type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
 
 enum Keys {
@@ -69,20 +59,24 @@ export default function Grid() {
 
 			}
 		}
-			return () => {
-				gc.destroy();
-				canvas.onclick = null;
-				canvas.onmousemove = null;
-				window.onkeydown = null;
-			};
+		return () => {
+			gc.destroy();
+			canvas.onclick = null;
+			canvas.onmousemove = null;
+			window.onkeydown = null;
+		};
 			
 	}, []);
 
   return (
-	<canvas
-		className='border-rounded-md shadow' 
-		//onMouseDown={() => setVertexCount(prev => prev + 1)}
-		ref={canvasRef}
-	/>
+	<div className=''>
+		<div className='m-auto w-fit'>
+			<canvas
+				className='border-rounded-md shadow' 
+				//onMouseDown={() => setVertexCount(prev => prev + 1)}
+				ref={canvasRef}
+			/>
+		</div>
+	</div>
   );
 }
