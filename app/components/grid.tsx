@@ -36,7 +36,6 @@ export default function Grid() {
 			source: i, 
 			target: Math.min(i + 1, nodes.length - 1)
 		}));
-		console.log(nodes);
 		const canvas = canvasRef.current;
 		const gc = new GraphController(
 			canvas,
