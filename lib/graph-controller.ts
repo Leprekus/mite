@@ -49,6 +49,23 @@ export default class GraphController {
         return context;
     }
 
+    private applyContainerCollision(n: Vertex) {
+        const minX = -this.width / 2, maxX = this.width / 2;
+        const minY = -this.height / 2, maxY = this.height / 2;
+        const r = this.radius, e = 0.9; // restitution (0..1)
+        if (n.x < minX + r) { n.x = minX + r; n.vx = Math.abs(n.vx) * e; }
+        if (n.x > maxX - r) { n.x = maxX - r; n.vx = -Math.abs(n.vx) * e; }
+        if (n.y < minY + r) { n.y = minY + r; n.vy = Math.abs(n.vy) * e; }
+        if (n.y > maxY - r) { n.y = maxY - r; n.vy = -Math.abs(n.vy) * e; }
+    }
+
+    private isOverlapping(node: Vertex) {
+        if(this.simulation === null) return false;
+        return this.simulation
+                .find(node.x, node.y, 2 * this.radius + 2) === undefined ?
+                false : true;
+
+    }
     private SimulationInit() {
         return d3.forceSimulation(this.nodes)
 			.force('charge', d3.forceManyBody().strength(-30))
@@ -71,6 +88,7 @@ export default class GraphController {
 				this.context.stroke();
 				this.context.beginPath();
 				for(const d of this.nodes) {
+                    this.applyContainerCollision(d);
                     this.context.moveTo(d.x + this.radius, d.y);
 					this.context.arc(d.x, d.y, this.radius, 0, 2 * Math.PI);
 				}
@@ -129,12 +147,16 @@ export default class GraphController {
         this.nodes = newNodes;
         this.links = newLinks;
         if(this.simulation === null) return;
+
         this.simulation.nodes(this.nodes);
-        this.simulation.force('link', d3.forceLink(this.links));
-        this.simulation.alpha(1);
-		this.simulation.restart();
+        const linkForce = this.simulation
+            .force<d3.ForceLink<Vertex, LinkDatum>>('link');
+        linkForce?.links(newLinks);
+		this.simulation.alphaTarget(0.3).restart();
     }
     addNode(node: Vertex) {
+        if(this.simulation === null) return;
+        if(this.isOverlapping(node)) return;
         this.setData([...this.nodes, node], this.links);
     }
     render() {
