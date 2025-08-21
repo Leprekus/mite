@@ -33,6 +33,8 @@ export default class GraphController {
     private links: LinkDatum[];
     private simulation: d3.Simulation<Vertex, undefined> | null;
     private nodeToRemove: string | null;
+    private from: string | null;
+    private to: string | null;
 
     constructor(
         canvas: HTMLCanvasElement, 
@@ -51,6 +53,8 @@ export default class GraphController {
         this.nodes = this.initialNodes.map(n => ({...n}));
         this.links = this.initialLinks.map(l => ({...l}));
         this.nodeToRemove = null;
+        this.from = null;
+        this.to = null;
         this.simulation = null;
     }
     private getContext() {
@@ -109,6 +113,8 @@ export default class GraphController {
 				this.context.stroke();
                 this.nodeToRemove && 
                 this.markNode(this.nodeToRemove, 'oklch(63.7% 0.237 25.331)');
+                this.from &&
+                this.markNode(this.from, 'oklch(67.3% 0.182 276.935)')
 				this.context.restore();
 			});
         
@@ -173,6 +179,16 @@ export default class GraphController {
         if(this.findNodeAt(node.x, node.y)) return;
         this.setData([...this.nodes, node], this.links);
     }
+    private addLink(from: string, to: string) {
+        if(this.simulation === null) return;
+        const source = this.nodes.find(n => n.id === from);
+        const target = this.nodes.find(n => n.id === to);
+        if(!source || !target) throw Error('expected node, found undefined');
+        this.setData(this.nodes, [...this.links, {
+            source,
+            target
+        }]);
+    }
 
     /*
      * purpose: require 2 funcion calls to remove a node
@@ -180,6 +196,9 @@ export default class GraphController {
      * call 2: confirms selection and removes node
      * */
     handleNodeDeletion() {
+        //invalidate any selected edges
+        this.from = null;
+        this.to = null;
         const node = this.findNodeAt(this.mouseX, this.mouseY);
         if(node && node.id === this.nodeToRemove){
             this.removeNode();
@@ -189,8 +208,28 @@ export default class GraphController {
 
         if(node) {
             this.nodeToRemove = node.id
-            this.simulation?.restart(); //reflect changes
+            this.simulation?.restart(); // mark node and reflect changes
         };
+    }
+
+    handleEdgeCreation() {
+        this.nodeToRemove = null; //invalidate any selected node
+        if(this.from) {
+            const to = this.findNodeAt(this.mouseX, this.mouseY);
+            if(to){
+                this.to = to.id;  
+                this.addLink(this.from, this.to);
+                this.from = null;
+                this.to = null;
+            }
+        } else {
+            const from = this.findNodeAt(this.mouseX, this.mouseY);
+            if(from) {
+                this.from = from.id;
+            }
+
+        }
+        this.simulation?.restart(); //mark node and reflect changes
     }
 
     /*
