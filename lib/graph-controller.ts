@@ -97,15 +97,17 @@ export default class GraphController {
 				this.context.beginPath();
 				for(const d of this.nodes) {
                     this.applyContainerCollision(d);
-                    if(this.nodeToRemove && d.id === this.nodeToRemove)
-                        this.context.fillStyle = 'red';
                     this.context.moveTo(d.x + this.radius, d.y);
 					this.context.arc(d.x, d.y, this.radius, 0, 2 * Math.PI);
 				}
 				this.context.fill();
 				this.context.strokeStyle = '#fff';
 				this.context.stroke();
+                this.markNode();
 				this.context.restore();
+
+
+                
 			});
         
 
@@ -177,14 +179,30 @@ export default class GraphController {
      * */
     handleNodeDeletion() {
         const node = this.findNodeAt(this.mouseX, this.mouseY);
-        console.log(node);
         if(node && node.id === this.nodeToRemove){
             this.removeNode();
             this.nodeToRemove = null;
             return;
         };
 
-        if(node) this.nodeToRemove = node.id;
+        if(node) {
+            this.nodeToRemove = node.id
+            this.simulation?.restart(); //reflect changes
+        };
+    }
+
+    /*
+     * purpose: mark a node for deletion with red fill
+     * */
+    private markNode(){
+        if(!this.nodeToRemove) return;
+        const node = this.nodes.find(n => n.id === this.nodeToRemove);
+        if(!node) return;
+        this.context.beginPath();
+        this.context.moveTo(node.x + this.radius, node.y);
+        this.context.arc(node.x, node.y, this.radius, 0, 2 * Math.PI);
+        this.context.fillStyle = 'red';
+        this.context.fill();
     }
 
     private removeNode() {
@@ -197,7 +215,6 @@ export default class GraphController {
             return l.source.id !== this.nodeToRemove && 
             l.target.id !== this.nodeToRemove
         });
-        console.log(this.links, nextLinks, nextNodes)
         this.setData(nextNodes, nextLinks);
     }
 
