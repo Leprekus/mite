@@ -53,12 +53,16 @@ export default function Grid() {
 				fx: null,
 				fy: null
 			});
-			gc.simulation?.alpha(1);
-			gc.simulation?.restart();
+			
+		}
+		canvas.oncontextmenu = event => {
+			event.preventDefault();
+			console.log('rigt clicked');
 		}
 			return () => {
 				gc.destroy();
 				canvas.onclick = null;
+				canvas.oncontextmenu = null;
 			};
 			
 	}, []);
