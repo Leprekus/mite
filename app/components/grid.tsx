@@ -65,6 +65,7 @@ export default function Grid() {
 				gc.handleNodeDeletion();
 			}
 			if(event.key === Keys.c){
+				gc.handleEdgeCreation();
 
 			}
 		}
