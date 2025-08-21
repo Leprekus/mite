@@ -1,7 +1,7 @@
 import * as d3 from "d3";
 
 export interface Vertex extends d3.SimulationNodeDatum {
-    id: number;
+    id: string;
     x: number;
     y: number;
     vx: number;
@@ -60,6 +60,10 @@ export default class GraphController {
 				this.context.translate(this.width / 2, this.height / 2);
 				this.context.beginPath();
 				for(const d of this.links) {
+                    if(
+                        typeof d.source === 'number' ||
+                        typeof d.target === 'number'
+                    ) throw Error('Expected a vertex, found number')
                     this.context.moveTo(d.source.x, d.source.y);
                     this.context.lineTo(d.target.x, d.target.y);
 				}
@@ -119,6 +123,18 @@ export default class GraphController {
         this.resize(); 
         if(this.simulation) this.simulation.restart();
         
+    }
+
+    private setData(newNodes: Vertex[], newLinks: LinkDatum[]) {
+        this.nodes = newNodes;
+        this.links = newLinks;
+        if(this.simulation === null) return;
+        this.simulation.nodes(this.nodes);
+        this.simulation.force('link', d3.forceLink(this.links));
+        this.simulation.restart();
+    }
+    addNode(node: Vertex) {
+        this.setData([...this.nodes, node], this.links);
     }
     render() {
         this.resize();
