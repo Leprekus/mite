@@ -74,6 +74,9 @@ export default class GraphController {
         return this.simulation
                 .find(x, y, 2 * this.radius + 2);
     }
+    private reheatSimulation(){
+		this.simulation?.alpha(0.7).alphaDecay(0.012).alphaTarget(0.0).restart();
+    }
     private SimulationInit() {
         return d3.forceSimulation(this.nodes)
 			.force('charge', d3.forceManyBody().strength(-30))
@@ -100,14 +103,13 @@ export default class GraphController {
                     this.context.moveTo(d.x + this.radius, d.y);
 					this.context.arc(d.x, d.y, this.radius, 0, 2 * Math.PI);
 				}
+                this.context.fillStyle = 'oklch(55.6% 0 0)';
 				this.context.fill();
 				this.context.strokeStyle = '#fff';
 				this.context.stroke();
-                this.markNode();
+                this.nodeToRemove && 
+                this.markNode(this.nodeToRemove, 'oklch(63.7% 0.237 25.331)');
 				this.context.restore();
-
-
-                
 			});
         
 
@@ -132,7 +134,7 @@ export default class GraphController {
 			})
 			.on('end', event => {
                 //i think this saves the simulation in the 'end' state.
-				if(!event.active) simulation.alphaTarget(0); 
+				if(!event.active) this.reheatSimulation();
 				event.subject.fx = null;
 				event.subject.fy = null;
 			});
@@ -164,7 +166,7 @@ export default class GraphController {
         const linkForce = this.simulation
             .force<d3.ForceLink<Vertex, LinkDatum>>('link');
         linkForce?.links(newLinks);
-		this.simulation.alpha(0.7).alphaTarget(0.0).restart();
+        this.reheatSimulation();
     }
     addNode(node: Vertex) {
         if(this.simulation === null) return;
@@ -194,14 +196,13 @@ export default class GraphController {
     /*
      * purpose: mark a node for deletion with red fill
      * */
-    private markNode(){
-        if(!this.nodeToRemove) return;
-        const node = this.nodes.find(n => n.id === this.nodeToRemove);
+    private markNode(id: string, color: string){
+        const node = this.nodes.find(n => n.id === id);
         if(!node) return;
         this.context.beginPath();
         this.context.moveTo(node.x + this.radius, node.y);
         this.context.arc(node.x, node.y, this.radius, 0, 2 * Math.PI);
-        this.context.fillStyle = 'red';
+        this.context.fillStyle = color;
         this.context.fill();
     }
 
@@ -211,7 +212,6 @@ export default class GraphController {
         const nextLinks = this.links.filter(l => {
            if(typeof l.source === 'number' || typeof l.target === 'number') 
                 throw Error('Expected vertex, found number');
-            console.log(this.nodeToRemove, l)
             return l.source.id !== this.nodeToRemove && 
             l.target.id !== this.nodeToRemove
         });
