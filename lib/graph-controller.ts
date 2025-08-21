@@ -59,12 +59,10 @@ export default class GraphController {
         if (n.y > maxY - r) { n.y = maxY - r; n.vy = -Math.abs(n.vy) * e; }
     }
 
-    private isOverlapping(node: Vertex) {
-        if(this.simulation === null) return false;
+    private findNodeAt(node: Vertex) {
+        if(this.simulation === null) return undefined;
         return this.simulation
-                .find(node.x, node.y, 2 * this.radius + 2) === undefined ?
-                false : true;
-
+                .find(node.x, node.y, 2 * this.radius + 2);
     }
     private SimulationInit() {
         return d3.forceSimulation(this.nodes)
@@ -152,11 +150,11 @@ export default class GraphController {
         const linkForce = this.simulation
             .force<d3.ForceLink<Vertex, LinkDatum>>('link');
         linkForce?.links(newLinks);
-		this.simulation.alphaTarget(0.3).restart();
+		this.simulation.alpha(0.7).alphaTarget(0.0).restart();
     }
     addNode(node: Vertex) {
         if(this.simulation === null) return;
-        if(this.isOverlapping(node)) return;
+        if(this.findNodeAt(node)) return;
         this.setData([...this.nodes, node], this.links);
     }
     render() {
