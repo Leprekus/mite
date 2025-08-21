@@ -11,8 +11,8 @@ export interface Vertex extends d3.SimulationNodeDatum {
 }
 export interface LinkDatum {
     index?: number;
-    source: Vertex;
-    target: Vertex; 
+    source: Vertex | number;
+    target: Vertex | number; 
 };
 export default class GraphController {
     private canvas: HTMLCanvasElement;
