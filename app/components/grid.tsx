@@ -41,15 +41,20 @@ export default function Grid() {
 		);
 		gc.render();
 		canvas.onclick = event => {
+			const rect = canvas.getBoundingClientRect();
+			const x = event.clientX - rect.left - canvas.width / 2;
+			const y = event.clientY - rect.top - canvas.height / 2;
 			gc.addNode({
 				id: crypto.randomUUID(),
-				x: event.clientX,
-				y: event.clientY, 
+				x,
+				y,
 				vx: 0,
 				vy: 0,
 				fx: null,
 				fy: null
 			});
+			gc.simulation?.alpha(1);
+			gc.simulation?.restart();
 		}
 			return () => {
 				gc.destroy();

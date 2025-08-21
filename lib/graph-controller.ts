@@ -131,7 +131,8 @@ export default class GraphController {
         if(this.simulation === null) return;
         this.simulation.nodes(this.nodes);
         this.simulation.force('link', d3.forceLink(this.links));
-        this.simulation.restart();
+        this.simulation.alpha(1);
+		this.simulation.restart();
     }
     addNode(node: Vertex) {
         this.setData([...this.nodes, node], this.links);
