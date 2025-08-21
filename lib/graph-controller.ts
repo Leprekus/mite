@@ -1,5 +1,10 @@
 import * as d3 from "d3";
+import { PointerEvent } from "react";
 
+export interface ClientXY {
+	clientX: number;
+	clientY: number;
+}
 export interface Vertex extends d3.SimulationNodeDatum {
     id: string;
     x: number;
@@ -20,11 +25,14 @@ export default class GraphController {
     private width: number;
     private height: number;
     private radius: number;
+    private mouseX: number;
+    private mouseY: number;
     private initialNodes: Vertex[];
     private initialLinks: LinkDatum[];
     private nodes: Vertex[];
     private links: LinkDatum[];
     private simulation: d3.Simulation<Vertex, undefined> | null;
+    private nodeToRemove: string | null;
 
     constructor(
         canvas: HTMLCanvasElement, 
@@ -36,11 +44,13 @@ export default class GraphController {
         this.width = 0;
         this.height = 0;
         this.radius = 20;
+        this.mouseX = 0;
+        this.mouseY = 0;
         this.initialNodes = initialNodes;
         this.initialLinks = initialLinks;
         this.nodes = this.initialNodes.map(n => ({...n}));
         this.links = this.initialLinks.map(l => ({...l}));
-
+        this.nodeToRemove = null;
         this.simulation = null;
     }
     private getContext() {
@@ -59,10 +69,10 @@ export default class GraphController {
         if (n.y > maxY - r) { n.y = maxY - r; n.vy = -Math.abs(n.vy) * e; }
     }
 
-    private findNodeAt(node: Vertex) {
+    private findNodeAt(x: number, y: number) {
         if(this.simulation === null) return undefined;
         return this.simulation
-                .find(node.x, node.y, 2 * this.radius + 2);
+                .find(x, y, 2 * this.radius + 2);
     }
     private SimulationInit() {
         return d3.forceSimulation(this.nodes)
@@ -87,6 +97,8 @@ export default class GraphController {
 				this.context.beginPath();
 				for(const d of this.nodes) {
                     this.applyContainerCollision(d);
+                    if(this.nodeToRemove && d.id === this.nodeToRemove)
+                        this.context.fillStyle = 'red';
                     this.context.moveTo(d.x + this.radius, d.y);
 					this.context.arc(d.x, d.y, this.radius, 0, 2 * Math.PI);
 				}
@@ -154,9 +166,55 @@ export default class GraphController {
     }
     addNode(node: Vertex) {
         if(this.simulation === null) return;
-        if(this.findNodeAt(node)) return;
+        if(this.findNodeAt(node.x, node.y)) return;
         this.setData([...this.nodes, node], this.links);
     }
+
+    /*
+     * purpose: require 2 funcion calls to remove a node
+     * call 1: selects the node
+     * call 2: confirms selection and removes node
+     * */
+    handleNodeDeletion() {
+        const node = this.findNodeAt(this.mouseX, this.mouseY);
+        console.log(node);
+        if(node && node.id === this.nodeToRemove){
+            this.removeNode();
+            this.nodeToRemove = null;
+            return;
+        };
+
+        if(node) this.nodeToRemove = node.id;
+    }
+
+    private removeNode() {
+        if(!this.nodeToRemove) return; 
+        const nextNodes = this.nodes.filter(n => n.id !== this.nodeToRemove);
+        const nextLinks = this.links.filter(l => {
+           if(typeof l.source === 'number' || typeof l.target === 'number') 
+                throw Error('Expected vertex, found number');
+            console.log(this.nodeToRemove, l)
+            return l.source.id !== this.nodeToRemove && 
+            l.target.id !== this.nodeToRemove
+        });
+        console.log(this.links, nextLinks, nextNodes)
+        this.setData(nextNodes, nextLinks);
+    }
+
+    getMouseCanvasCoordinates(event: ClientXY) {
+	    const rect = this.canvas.getBoundingClientRect();
+        const x = event.clientX - rect.left - this.canvas.width / 2;
+        const y = event.clientY - rect.top - this.canvas.height / 2;
+        return [x, y];
+	
+    }
+
+    updateMouseCanvasPosition(event: ClientXY) {
+        const [x, y] = this.getMouseCanvasCoordinates(event); 
+        this.mouseX = x;
+        this.mouseY = y;
+    }
+   
     render() {
         this.resize();
         this.simulation = this.SimulationInit();

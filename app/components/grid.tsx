@@ -15,6 +15,10 @@ enum EventTypes {
 
 //type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
 
+enum Keys {
+	x = 'x',
+	c = 'c'
+};
 export default function Grid() {
 	const canvasRef = useRef<HTMLCanvasElement| null>(null);
 	useEffect(() => {
@@ -41,10 +45,8 @@ export default function Grid() {
 		);
 		gc.render();
 		canvas.onclick = event => {
-			const rect = canvas.getBoundingClientRect();
-			const x = event.clientX - rect.left - canvas.width / 2;
-			const y = event.clientY - rect.top - canvas.height / 2;
-			gc.addNode({
+		const [x, y] = gc.getMouseCanvasCoordinates(event);
+		gc.addNode({
 				id: crypto.randomUUID(),
 				x,
 				y,
@@ -55,21 +57,30 @@ export default function Grid() {
 			});
 			
 		}
-		canvas.oncontextmenu = event => {
-			event.preventDefault();
-			console.log('rigt clicked');
+		canvas.onmousemove = event => {
+			gc.updateMouseCanvasPosition(event);
+		}
+		window.onkeydown = event => {
+			
+			if(event.key === Keys.x){
+				gc.handleNodeDeletion();
+			}
+			if(event.key === Keys.c){
+
+			}
 		}
 			return () => {
 				gc.destroy();
 				canvas.onclick = null;
-				canvas.oncontextmenu = null;
+				canvas.onmousemove = null;
+				window.onkeydown = null;
 			};
 			
 	}, []);
 
   return (
 	<canvas
-		className='bg-red-500' 
+		className='border-rounded-md shadow' 
 		//onMouseDown={() => setVertexCount(prev => prev + 1)}
 		ref={canvasRef}
 	/>
