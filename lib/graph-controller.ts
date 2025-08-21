@@ -1,22 +1,22 @@
 import * as d3 from "d3";
 
-interface Vertex extends d3.SimulationNodeDatum {
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  fx: number | null;
-  fy: number | null;
+export interface Vertex extends d3.SimulationNodeDatum {
+    id: number;
+    x: number;
+    y: number;
+    vx: number;
+    vy: number;
+    fx: number | null;
+    fy: number | null;
 }
-interface LinkDatum {
-    index: number;
+export interface LinkDatum {
+    index?: number;
     source: Vertex;
     target: Vertex; 
 };
 export default class GraphController {
     private canvas: HTMLCanvasElement;
     private context:  CanvasRenderingContext2D;
-    private window: Window & typeof globalThis;
     private width: number;
     private height: number;
     private radius: number;
@@ -24,29 +24,24 @@ export default class GraphController {
     private initialLinks: LinkDatum[];
     private nodes: Vertex[];
     private links: LinkDatum[];
+    private simulation: d3.Simulation<Vertex, undefined> | null;
 
     constructor(
         canvas: HTMLCanvasElement, 
-        window: Window & typeof globalThis,
         initialNodes: Vertex[],
         initialLinks: LinkDatum[],
         ){
         this.canvas = canvas;
         this.context = this.getContext();
-        this.window =  window;
-        this.width = Math.min(
-            this.window.innerHeight,
-            this.window.innerWidth
-        );
+        this.width = 0;
+        this.height = 0;
         this.radius = 20;
-        this.height = this.width;
         this.initialNodes = initialNodes;
         this.initialLinks = initialLinks;
-        this.nodes = this.initialNodes
-            .map(n => Object.create(n));
-        this.links = this.initialLinks
-            .map(n => Object.create(n));
+        this.nodes = this.initialNodes.map(n => ({...n}));
+        this.links = this.initialLinks.map(l => ({...l}));
 
+        this.simulation = null;
     }
     private getContext() {
         const context = this.canvas.getContext('2d');
@@ -58,7 +53,7 @@ export default class GraphController {
         return d3.forceSimulation(this.nodes)
 			.force('charge', d3.forceManyBody().strength(-30))
 			.force('link', d3.forceLink(this.links).strength(1)
-                              .distance(radius * 4).iterations(10))
+                              .distance(this.radius * 4).iterations(10))
 			.on('tick', () => {
 				this.context.clearRect(0, 0, this.width, this.height);
 				this.context.save();
@@ -102,13 +97,41 @@ export default class GraphController {
 				event.subject.fy = event.y;
 			})
 			.on('end', event => {
-				if(!event.active) simulation.alphaTarget(0); //i think this saves the simulation in the 'end' state.
+                //i think this saves the simulation in the 'end' state.
+				if(!event.active) simulation.alphaTarget(0); 
 				event.subject.fx = null;
 				event.subject.fy = null;
 			});
     }
-    init() {
-        const simulation = this.SimulationInit();
-        this.DragInit(simulation);
+
+    private resize () {
+        const w = Math.min(window.innerWidth, window.innerHeight);
+        const dpr = window.devicePixelRatio || 1;
+        this.width = w; this.height = w;
+        this.canvas.width = Math.floor(w * dpr);
+        this.canvas.height = Math.floor(w * dpr);
+        this.canvas.style.width = `${w}px`;
+        this.canvas.style.height = `${w}px`;
+        this.context.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    private onResize = () => { 
+        this.resize(); 
+        if(this.simulation) this.simulation.restart();
+        
+    }
+    render() {
+        this.resize();
+        this.simulation = this.SimulationInit();
+        const drag = this.DragInit(this.simulation);
+        d3.select(this.canvas).call(drag);
+        window.addEventListener('resize', this.onResize);
+
+    }
+
+    destroy() {
+        if(this.simulation) this.simulation.stop();
+        d3.select(this.canvas).on('.drag', null);
+        window.removeEventListener('resize', this.onResize);
     }
 }
