@@ -1,5 +1,6 @@
 'use client'
 import GraphController, { LinkDatum, Vertex } from '@/lib/graph-controller';
+import { randomUUID } from 'crypto';
 import * as d3 from 'd3';
 import { cloneElement, ComponentProps, DragEventHandler, MouseEventHandler, ReactElement, ReactNode, useEffect, useRef, useState } from "react";
 
@@ -19,8 +20,8 @@ export default function Grid() {
 	const canvasRef = useRef<HTMLCanvasElement| null>(null);
 	useEffect(() => {
 		if(!canvasRef.current) return;
-		let nodes: Vertex[] = Array.from({ length: 60 }, (_, i) => ({
-			id: i,
+		let nodes: Vertex[] = Array.from({ length: 10 }, () => ({
+			id: randomUUID(),
 			x: (Math.random() * 2) - 1,
 			y: (Math.random() * 2) - 1,
 			vx: 0,
@@ -32,6 +33,7 @@ export default function Grid() {
 			source: i, 
 			target: Math.min(i + 1, nodes.length - 1)
 		}));
+		console.log(nodes);
 		const canvas = canvasRef.current;
 		const gc = new GraphController(
 			canvas,
@@ -39,8 +41,20 @@ export default function Grid() {
 			links
 		);
 		gc.render();
+		canvas.onclick = () => {
+			gc.addNode({
+				id: randomUUID(),
+				y: 0,
+				x: 0,
+				vx: 0,
+				vy: 0,
+				fx: null,
+				fy: null
+			});
+		}
 			return () => {
 				gc.destroy();
+				canvas.onclick = null;
 			};
 			
 	}, []);
