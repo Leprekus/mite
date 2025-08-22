@@ -1,4 +1,5 @@
 import * as d3 from "d3";
+import Graph from "./graph";
 
 export enum MSTImplementation {
     Prim,
@@ -29,9 +30,9 @@ export interface LinkDatum {
 };
 
 export enum Trace {
-    outline,
-    mark,
-    clear
+    outline = 'outline;',
+    mark = 'mark',
+    clear = 'clear'
 };
 
 export type TraceOp = 
@@ -93,6 +94,14 @@ export default class GraphController {
     private reheatSimulation(){
         this.simulation?.alpha(0.7).alphaDecay(0.012).alphaTarget(0.0).restart();
     }
+    private markUserSelectedNodes(){
+        const removalFill = 'oklch(63.7% 0.237 25.331)';
+        const linkCreationFill = 'oklch(67.3% 0.182 276.935)';
+        this.nodeToRemove && 
+        this.markNode(this.nodeToRemove, removalFill);
+        this.from &&
+        this.markNode(this.from, linkCreationFill);
+    }
     private SimulationInit() {
         return d3.forceSimulation(this.nodes)
             .force('charge', d3.forceManyBody().strength(-30))
@@ -125,10 +134,11 @@ export default class GraphController {
                 this.context.fill();
                 this.context.strokeStyle = '#fff';
                 this.context.stroke();
-                this.nodeToRemove && 
-                    this.markNode(this.nodeToRemove, 'oklch(63.7% 0.237 25.331)');
-                this.from &&
-                    this.markNode(this.from, 'oklch(67.3% 0.182 276.935)')
+
+                
+                this.markUserSelectedNodes();
+               // this.outlineAlgorithmNodes();
+               // this.markAlgorithmNodes();
                 this.context.restore();
             });
 
@@ -203,7 +213,10 @@ export default class GraphController {
 
 
     /*
-     * purpose: mark a node for deletion with red fill
+     * purpose: mark a node for:
+     * - deletion 
+     * - link creation
+     * - algorithm
      * */
     private markNode(id: string, color: string){
         const node = this.nodes.find(n => n.id === id);
@@ -361,6 +374,7 @@ export default class GraphController {
     } 
 
     minimumSpanningTree(implementation: MSTImplementation) {
+       
 
     }
 
@@ -370,6 +384,13 @@ export default class GraphController {
 
     traceRecorderPlayer(steps: TraceOp[], intervalMS: number) {
        //TODO: move all Trace logic into VisualTraceController 
+    }
+    algorithmPlayer() {
+        const recorder = this.makeTraceRecorder();
+        const graph = new Graph(this.nodes, this.links, recorder.trace);
+        graph.kruskal();
+        console.log(recorder);
+        console.log(this.nodes);
     }
 
     render() {
