@@ -87,6 +87,7 @@ export default class GraphController {
                     ) throw Error('Expected a vertex, found number')
                     this.context.moveTo(d.source.x, d.source.y);
                     this.context.lineTo(d.target.x, d.target.y);
+                    this.drawLinkWeight(d.source, d.target, d.weight); 
                 }
                 this.context.strokeStyle = '#aaa';
                 this.context.stroke();
@@ -188,6 +189,21 @@ export default class GraphController {
         this.context.arc(node.x, node.y, this.radius, 0, 2 * Math.PI);
         this.context.fillStyle = color;
         this.context.fill();
+    }
+
+    private drawLinkWeight(
+            source: Vertex, 
+            target: Vertex, 
+            weight: number) {
+        const midX = (source.x + target.x) / 2;
+        const midY = (source.y + target.y) / 2;
+        const weightFormatted = weight.toString().length > 5 ?
+            weight.toFixed(2) :
+            weight.toString();
+              
+        this.context.fillStyle = 'black';
+        this.context.font = '12px sans-serif';
+        this.context.fillText(weightFormatted, midX, midY);
     }
 
     private addLink(from: string, to: string) {
