@@ -25,6 +25,7 @@ export interface LinkDatum {
     index?: number;
     source: Vertex | number;
     target: Vertex | number; 
+    weight: number;
 };
 export default class GraphController {
     private canvas: HTMLCanvasElement;
@@ -194,9 +195,14 @@ export default class GraphController {
         const source = this.nodes.find(n => n.id === from);
         const target = this.nodes.find(n => n.id === to);
         if(!source || !target) throw Error('expected node, found undefined');
+        //calculate the euclidean distance between the points
+        const weight = Math.hypot(
+            source.x - target.x, 
+            source.y - target.y);
         this.setData(this.nodes, [...this.links, {
             source,
-            target
+            target,
+            weight
         }]);
     }
 
