@@ -64,9 +64,9 @@ export default class GraphController {
     private nodes: Vertex[];
     private links: LinkDatum[];
     private simulation: d3.Simulation<Vertex, undefined> | null;
-    private nodeToRemove: string | null;
-    private from: string | null;
-    private to: string | null;
+    private nodeToRemove: number | null;
+    private from: number | null;
+    private to: number | null;
 
     private getContext() {
         const context = this.canvas.getContext('2d');
@@ -201,12 +201,12 @@ export default class GraphController {
 
     private removeNode() {
         if(!this.nodeToRemove) return; 
-        const nextNodes = this.nodes.filter(n => n.id !== this.nodeToRemove);
+        const nextNodes = this.nodes.filter(n => n.index !== this.nodeToRemove);
         const nextLinks = this.links.filter(l => {
            if(typeof l.source === 'number' || typeof l.target === 'number') 
                 throw Error('Expected vertex, found number');
-            return l.source.id !== this.nodeToRemove && 
-            l.target.id !== this.nodeToRemove
+            return l.source.index !== this.nodeToRemove && 
+            l.target.index !== this.nodeToRemove
         });
         this.setData(nextNodes, nextLinks);
     }
@@ -218,8 +218,8 @@ export default class GraphController {
      * - link creation
      * - algorithm
      * */
-    private markNode(id: string, color: string){
-        const node = this.nodes.find(n => n.id === id);
+    private markNode(index: number, color: string){
+        const node = this.nodes.at(index);
         if(!node) return;
         this.context.beginPath();
         this.context.moveTo(node.x + this.radius, node.y);
@@ -243,10 +243,10 @@ export default class GraphController {
         this.context.fillText(weightFormatted, midX, midY);
     }
 
-    private addLink(from: string, to: string) {
+    private addLink(fromIdx: number, toIdx: number) {
         if(this.simulation === null) return;
-        const source = this.nodes.find(n => n.id === from);
-        const target = this.nodes.find(n => n.id === to);
+        const source = this.nodes.at(fromIdx);
+        const target = this.nodes.at(toIdx);
         if(!source || !target) throw Error('expected node, found undefined');
         //calculate the euclidean distance between the points
         const weight = Math.hypot(
@@ -311,14 +311,14 @@ export default class GraphController {
         this.from = null;
         this.to = null;
         const node = this.findNodeAt(this.mouseX, this.mouseY);
-        if(node && node.id === this.nodeToRemove){
+        if(node && node.index === this.nodeToRemove){
             this.removeNode();
             this.nodeToRemove = null;
             return;
         };
 
         if(node) {
-            this.nodeToRemove = node.id
+            this.nodeToRemove = node.index
             this.simulation?.restart(); // mark node and reflect changes
         };
     }
@@ -327,16 +327,20 @@ export default class GraphController {
         this.nodeToRemove = null; //invalidate any selected node
         if(this.from) {
             const to = this.findNodeAt(this.mouseX, this.mouseY);
+            if(to?.index === undefined) 
+                throw Error('Expected index found undefined');
             if(to){
-                this.to = to.id;  
+                this.to = to.index;  
                 this.addLink(this.from, this.to);
                 this.from = null;
                 this.to = null;
             }
         } else {
             const from = this.findNodeAt(this.mouseX, this.mouseY);
+            if(from?.index === undefined) 
+                throw Error('Expected index found undefined')
             if(from) {
-                this.from = from.id;
+                this.from = from.index;
             }
 
         }
