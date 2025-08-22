@@ -4,10 +4,18 @@ import UnionFind from "./union-find";
 interface Edge extends LinkDatum {
     id: string;
 };
-class Graph {
+export default class Graph {
     private vertices: Vertex[]; 
     private edges: Edge[];
-    constructor(vertices: Vertex[], edges: LinkDatum[]) {
+    private outlineNodes: (v: Vertex[]) => void;
+    private markNodes: (v: Vertex[], e: LinkDatum) => void;
+    constructor(
+        vertices: Vertex[], 
+        edges: LinkDatum[],
+        outlineNodes: (v: Vertex[]) => void,
+        markNodes: (v: Vertex[], e: LinkDatum) => void) {
+        this.outlineNodes = outlineNodes;
+        this.markNodes = markNodes;
         this.vertices = vertices.map(v => ({...v}));
         this.edges = edges.map(e => ({
             ...e, 
@@ -23,9 +31,11 @@ class Graph {
         edges.map(e => {
             const from = e.source as Vertex;
             const to = e.target as Vertex;
+            this.outlineNodes([from , to]);
             if(uf.find(from).parent !== uf.find(to).parent) {
                 uf.union(from, to);
                 tree.push(e);
+                this.markNodes([from, to], e);
             }
         });
         return tree;
