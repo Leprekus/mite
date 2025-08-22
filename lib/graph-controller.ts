@@ -252,6 +252,13 @@ export default class GraphController {
         this.mouseY = y;
     }
 
+    private applyTraceStep(op: TraceOp) {
+        switch(op.type) {
+            case Trace.outline: null; break;
+            case Trace.mark: null; break;
+            case Trace.clear: null; break;
+        }
+    }
     constructor(
         canvas: HTMLCanvasElement, 
         initialNodes: Vertex[],
@@ -338,13 +345,15 @@ export default class GraphController {
 	
     }
 
-   makeRecorder(): Recorder {
+   makeTraceRecorder(): Recorder {
         const steps: TraceOp[] = [];
         const trace: VisualTrace = {
             outline: (nodes: Vertex[]) => 
                 steps.push({ type: Trace.outline, nodes }),
+
             mark: (nodes: Vertex[], link: LinkDatum) =>
                 steps.push({ type: Trace.mark, nodes, link }),
+
             clear: () => steps.push({ type: Trace.clear })
         };
         return { steps, trace };
@@ -358,6 +367,11 @@ export default class GraphController {
     minimumCostPath(implementation: MCPImplementation) {
 
     }
+
+    traceRecorderPlayer(steps: TraceOp[], intervalMS: number) {
+       //TODO: move all Trace logic into VisualTraceController 
+    }
+
     render() {
         this.resize();
         this.simulation = this.SimulationInit();
