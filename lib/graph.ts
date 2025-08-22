@@ -26,7 +26,7 @@ export default class Graph {
         const uf = new UnionFind<Vertex>();
         const tree: Edge[] = [];
         this.vertices.map(v => uf.add(v));
-        const edges = this.edges
+        const edges = [...this.edges]
             .sort((a, b) => a.weight - b.weight);
         edges.map(e => {
             const from = e.source as Vertex;
