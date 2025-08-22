@@ -1,10 +1,17 @@
 import * as d3 from "d3";
-import { PointerEvent } from "react";
 
+export enum MSTImplementation {
+    Prim,
+    Kruskal,
+};
+export enum MCPImplementation {
+    Dijkstra,
+    BellmanFord,
+};
 export interface ClientXY {
 	clientX: number;
 	clientY: number;
-}
+};
 export interface Vertex extends d3.SimulationNodeDatum {
     id: string;
     x: number;
@@ -286,7 +293,13 @@ export default class GraphController {
     }
 
     
-   
+    minimumSpanningTree(implementation: MSTImplementation) {
+
+    }
+
+    minimumCostPath(implementation: MCPImplementation) {
+
+    }
     render() {
         this.resize();
         this.simulation = this.SimulationInit();
