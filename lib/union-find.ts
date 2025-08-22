@@ -1,4 +1,4 @@
-interface UnionFindItem {
+export interface UnionFindItem {
     id: string;
 }
 export class UnionFindNode<T>{
