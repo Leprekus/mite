@@ -1,6 +1,7 @@
 'use client'
-import GraphController, { LinkDatum, Vertex } from '@/lib/graph-controller';
-import { useEffect, useRef } from "react";
+import Button from '@/components/ui/button';
+import GraphController, { LinkDatum, MSTImplementation, Vertex } from '@/lib/graph-controller';
+import { forwardRef, useEffect, useRef } from "react";
 
 const menuItems = ['Start', 'Step Forward', 'Step Back', 'Clear', 'Reset'];
 //type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
@@ -11,6 +12,7 @@ enum Keys {
 };
 export default function Grid() {
 	const canvasRef = useRef<HTMLCanvasElement| null>(null);
+	const gcRef = useRef<GraphController | null>(null);
 	useEffect(() => {
 		if(!canvasRef.current) return;
 		let nodes: Vertex[] = Array.from({ length: 10 }, () => ({
@@ -32,6 +34,7 @@ export default function Grid() {
 			nodes,
 			links
 		);
+		gcRef.current = gc;
 		gc.render();
 		canvas.onclick = event => {
 		const [x, y] = gc.getMouseCanvasCoordinates(event);
@@ -46,9 +49,7 @@ export default function Grid() {
 			});
 			
 		}
-		canvas.onmousemove = event => {
-			gc.updateMouseCanvasPosition(event);
-		}
+		
 		window.onkeydown = event => {
 			
 			if(event.key === Keys.x){
@@ -59,6 +60,7 @@ export default function Grid() {
 
 			}
 		}
+		gc.minimumSpanningTree(MSTImplementation.Kruskal);
 		return () => {
 			gc.destroy();
 			canvas.onclick = null;
@@ -70,6 +72,13 @@ export default function Grid() {
 
   return (
 	<div className=''>
+		<div className='flex gap-2'>
+		<Button >Start</Button>
+		<Button>Step Forward</Button>
+		<Button>Step Back</Button>
+		<Button>Clear</Button>
+		<Button>Reset</Button>
+		</div>
 		<div className='m-auto w-fit'>
 			<canvas
 				className='border-rounded-md shadow' 
