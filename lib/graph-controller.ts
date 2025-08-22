@@ -87,6 +87,7 @@ export default class GraphController {
                     ) throw Error('Expected a vertex, found number')
                     this.context.moveTo(d.source.x, d.source.y);
                     this.context.lineTo(d.target.x, d.target.y);
+                    //TODO: add a boolean to allow weight toggle
                     this.drawLinkWeight(d.source, d.target, d.weight); 
                 }
                 this.context.strokeStyle = '#aaa';
