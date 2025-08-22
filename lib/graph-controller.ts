@@ -74,7 +74,7 @@ export default class GraphController {
         return d3.forceSimulation(this.nodes)
             .force('charge', d3.forceManyBody().strength(-30))
             .force('link', d3.forceLink(this.links).strength(1)
-                .distance(this.radius * 4).iterations(10))
+                .distance(this.radius * 7).iterations(10))
             .on('tick', () => {
                 this.context.clearRect(0, 0, this.width, this.height);
                 this.context.save();
