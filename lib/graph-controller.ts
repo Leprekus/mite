@@ -27,6 +27,29 @@ export interface LinkDatum {
     target: Vertex | number; 
     weight: number;
 };
+
+export enum Trace {
+    outline,
+    mark,
+    clear
+};
+
+export type TraceOp = 
+    | { type: Trace.outline, nodes: Vertex[] }
+    | { type: Trace.mark, nodes: Vertex[], link: LinkDatum }
+    | { type: Trace.clear };
+
+export interface VisualTrace {
+    outline: (nodes: Vertex[]) => void;
+    mark: (nodes: Vertex[], link: LinkDatum) => void;
+    clear: () => void;
+};
+
+type Recorder = {
+    steps: TraceOp[];
+    trace: VisualTrace;
+};
+
 export default class GraphController {
     private canvas: HTMLCanvasElement;
     private context:  CanvasRenderingContext2D;
@@ -315,7 +338,19 @@ export default class GraphController {
 	
     }
 
-    
+   makeRecorder(): Recorder {
+        const steps: TraceOp[] = [];
+        const trace: VisualTrace = {
+            outline: (nodes: Vertex[]) => 
+                steps.push({ type: Trace.outline, nodes }),
+            mark: (nodes: Vertex[], link: LinkDatum) =>
+                steps.push({ type: Trace.mark, nodes, link }),
+            clear: () => steps.push({ type: Trace.clear })
+        };
+        return { steps, trace };
+
+    } 
+
     minimumSpanningTree(implementation: MSTImplementation) {
 
     }
