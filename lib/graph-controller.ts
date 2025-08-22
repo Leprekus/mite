@@ -106,7 +106,7 @@ export default class GraphController {
     }
     
     private outlineAlgorithmNodes() {
-        const algorithmOutlineFill = 'oklch(72.3% 0.219 149.579)';
+        const algorithmOutlineFill = 'oklch(75% 0.183 55.934)';
         this.algorithmOutlinedNodes .forEach(n => 
             this.outlineNode(n.id, algorithmOutlineFill));
 
@@ -229,7 +229,14 @@ export default class GraphController {
 
 
     private outlineNode(id: string, color: string) {
-
+        const node = this.nodes.find(n => n.id === id);
+        if(!node) return;
+        this.context.beginPath();
+        this.context.moveTo(node.x + this.radius, node.y);
+        this.context.arc(node.x, node.y, this.radius, 0, 2 * Math.PI);
+        this.context.strokeStyle = color;
+        this.context.lineWidth = 7;
+        this.context.stroke();
     }
     /*
      * purpose: mark a node for:
@@ -287,7 +294,10 @@ export default class GraphController {
     private applyTraceStep(op: TraceOp) {
         if(!this.simulation) return;
         switch(op.type) {
-            case Trace.outline: null;
+            case Trace.outline: 
+                //only keep the most recent selection
+                this.algorithmOutlinedNodes = [...op.nodes];
+                break;
             case Trace.mark: 
                 //remove duplicate nodes
                 //that may come from:
@@ -298,7 +308,8 @@ export default class GraphController {
                 ].filter((n, i, self) => 
                     i === self.findIndex(
                             m => n.id === m.id)); 
-            case Trace.clear: null;
+                break;
+            case Trace.clear: null; break;
         }
         this.simulation.restart();
     }
@@ -419,7 +430,7 @@ export default class GraphController {
         const graph = new Graph(this.nodes, this.links, recorder.trace);
         graph.kruskal();
         console.log(recorder.steps)
-        this.traceRecorderPlayer(recorder.steps, 500);
+        this.traceRecorderPlayer(recorder.steps, 1500);
     }
 
     render() {
