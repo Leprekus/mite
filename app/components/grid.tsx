@@ -26,7 +26,8 @@ export default function Grid() {
 		}));
 		const links: LinkDatum[] = nodes.map((_, i) => ({
 			source: i, 
-			target: Math.min(i + 1, nodes.length - 1)
+			target: Math.min(i + 1, nodes.length - 1),
+			weight: 0
 		}));
 		const canvas = canvasRef.current;
 		const gc = new GraphController(
