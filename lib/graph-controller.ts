@@ -64,9 +64,11 @@ export default class GraphController {
     private nodes: Vertex[];
     private links: LinkDatum[];
     private simulation: d3.Simulation<Vertex, undefined> | null;
-    private nodeToRemove: number | null;
-    private from: number | null;
-    private to: number | null;
+    private nodeToRemove: string | null;
+    private from: string | null;
+    private to: string | null;
+    private algorithmMarkedNodes: Vertex[];
+    private algorithmOutlinedNodes: Vertex[];
 
     private getContext() {
         const context = this.canvas.getContext('2d');
@@ -102,6 +104,20 @@ export default class GraphController {
         this.from &&
         this.markNode(this.from, linkCreationFill);
     }
+    
+    private outlineAlgorithmNodes() {
+        const algorithmOutlineFill = 'oklch(72.3% 0.219 149.579)';
+        this.algorithmOutlinedNodes .forEach(n => 
+            this.outlineNode(n.id, algorithmOutlineFill));
+
+    }
+
+    private markAlgorithmNodes() {
+        const algorithmMarkedFill = 'oklch(72.3% 0.219 149.579)';
+        this.algorithmMarkedNodes.forEach(n =>
+            this.markNode(n.id, algorithmMarkedFill));
+
+    }
     private SimulationInit() {
         return d3.forceSimulation(this.nodes)
             .force('charge', d3.forceManyBody().strength(-30))
@@ -136,9 +152,9 @@ export default class GraphController {
                 this.context.stroke();
 
                 
+                this.outlineAlgorithmNodes();
+                this.markAlgorithmNodes();
                 this.markUserSelectedNodes();
-               // this.outlineAlgorithmNodes();
-               // this.markAlgorithmNodes();
                 this.context.restore();
             });
 
@@ -201,25 +217,28 @@ export default class GraphController {
 
     private removeNode() {
         if(!this.nodeToRemove) return; 
-        const nextNodes = this.nodes.filter(n => n.index !== this.nodeToRemove);
+        const nextNodes = this.nodes.filter(n => n.id !== this.nodeToRemove);
         const nextLinks = this.links.filter(l => {
            if(typeof l.source === 'number' || typeof l.target === 'number') 
                 throw Error('Expected vertex, found number');
-            return l.source.index !== this.nodeToRemove && 
-            l.target.index !== this.nodeToRemove
+            return l.source.id !== this.nodeToRemove && 
+            l.target.id !== this.nodeToRemove
         });
         this.setData(nextNodes, nextLinks);
     }
 
 
+    private outlineNode(id: string, color: string) {
+
+    }
     /*
      * purpose: mark a node for:
      * - deletion 
      * - link creation
      * - algorithm
      * */
-    private markNode(index: number, color: string){
-        const node = this.nodes.at(index);
+    private markNode(id: string, color: string){
+        const node = this.nodes.find(n => n.id === id);
         if(!node) return;
         this.context.beginPath();
         this.context.moveTo(node.x + this.radius, node.y);
@@ -243,10 +262,10 @@ export default class GraphController {
         this.context.fillText(weightFormatted, midX, midY);
     }
 
-    private addLink(fromIdx: number, toIdx: number) {
+    private addLink(fromId: string, toId: string) {
         if(this.simulation === null) return;
-        const source = this.nodes.at(fromIdx);
-        const target = this.nodes.at(toIdx);
+        const source = this.nodes.find(n => n.id === fromId);
+        const target = this.nodes.find(n => n.id === toId);
         if(!source || !target) throw Error('expected node, found undefined');
         //calculate the euclidean distance between the points
         const weight = Math.hypot(
@@ -266,11 +285,22 @@ export default class GraphController {
     }
 
     private applyTraceStep(op: TraceOp) {
+        if(!this.simulation) return;
         switch(op.type) {
-            case Trace.outline: null; break;
-            case Trace.mark: null; break;
-            case Trace.clear: null; break;
+            case Trace.outline: null;
+            case Trace.mark: 
+                //remove duplicate nodes
+                //that may come from:
+                //(u, v) and (v, w)
+                this.algorithmMarkedNodes = [
+                    ...this.algorithmMarkedNodes,
+                    ...op.nodes
+                ].filter((n, i, self) => 
+                    i === self.findIndex(
+                            m => n.id === m.id)); 
+            case Trace.clear: null;
         }
+        this.simulation.restart();
     }
     constructor(
         canvas: HTMLCanvasElement, 
@@ -291,6 +321,8 @@ export default class GraphController {
         this.nodeToRemove = null;
         this.from = null;
         this.to = null;
+        this.algorithmOutlinedNodes = [];
+        this.algorithmMarkedNodes = [];
         this.simulation = null;
     }
     
@@ -311,14 +343,14 @@ export default class GraphController {
         this.from = null;
         this.to = null;
         const node = this.findNodeAt(this.mouseX, this.mouseY);
-        if(node && node.index === this.nodeToRemove){
+        if(node && node.id === this.nodeToRemove){
             this.removeNode();
             this.nodeToRemove = null;
             return;
         };
 
         if(node) {
-            this.nodeToRemove = node.index
+            this.nodeToRemove = node.id;
             this.simulation?.restart(); // mark node and reflect changes
         };
     }
@@ -327,20 +359,16 @@ export default class GraphController {
         this.nodeToRemove = null; //invalidate any selected node
         if(this.from) {
             const to = this.findNodeAt(this.mouseX, this.mouseY);
-            if(to?.index === undefined) 
-                throw Error('Expected index found undefined');
             if(to){
-                this.to = to.index;  
+                this.to = to.id;  
                 this.addLink(this.from, this.to);
                 this.from = null;
                 this.to = null;
             }
         } else {
             const from = this.findNodeAt(this.mouseX, this.mouseY);
-            if(from?.index === undefined) 
-                throw Error('Expected index found undefined')
             if(from) {
-                this.from = from.index;
+                this.from = from.id;
             }
 
         }
@@ -377,24 +405,21 @@ export default class GraphController {
 
     } 
 
-    minimumSpanningTree(implementation: MSTImplementation) {
-       
-
-    }
-
-    minimumCostPath(implementation: MCPImplementation) {
-
-    }
-
-    traceRecorderPlayer(steps: TraceOp[], intervalMS: number) {
+    async traceRecorderPlayer(steps: TraceOp[], intervalMs: number) {
        //TODO: move all Trace logic into VisualTraceController 
+        const sleep = (ms: number) => 
+            new Promise(resolve => setTimeout(resolve, ms));
+        for(const step of steps) {
+            this.applyTraceStep(step);
+            await sleep(intervalMs);
+        }
     }
     algorithmPlayer() {
         const recorder = this.makeTraceRecorder();
         const graph = new Graph(this.nodes, this.links, recorder.trace);
         graph.kruskal();
-        console.log(recorder);
-        console.log(this.nodes);
+        console.log(recorder.steps)
+        this.traceRecorderPlayer(recorder.steps, 500);
     }
 
     render() {
