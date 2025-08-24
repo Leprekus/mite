@@ -48,10 +48,12 @@ export interface VisualTrace {
 
 type Recorder = {
     steps: TraceOp[];
+    history: TraceOp[];
     trace: VisualTrace;
 };
 
 export default class GraphController {
+    // simulation state
     private canvas: HTMLCanvasElement;
     private context:  CanvasRenderingContext2D;
     private width: number;
@@ -59,17 +61,21 @@ export default class GraphController {
     private radius: number;
     private mouseX: number;
     private mouseY: number;
+    private simulation: d3.Simulation<Vertex, undefined> | null;
+
+    // node state
     private initialNodes: Vertex[];
     private initialLinks: LinkDatum[];
     private nodes: Vertex[];
     private links: LinkDatum[];
-    private simulation: d3.Simulation<Vertex, undefined> | null;
     private nodeToRemove: string | null;
     private from: string | null;
     private to: string | null;
     private algorithmMarkedNodes: Vertex[];
     private algorithmOutlinedNodes: Vertex[];
 
+    //player state
+    private isPlaying: boolean;
     private getContext() {
         const context = this.canvas.getContext('2d');
         if(!context) throw new Error('Canvas context is null');
@@ -309,7 +315,10 @@ export default class GraphController {
                     i === self.findIndex(
                             m => n.id === m.id)); 
                 break;
-            case Trace.clear: null; break;
+            case Trace.clear: 
+                this.algorithmOutlinedNodes = []; 
+                this.algorithmMarkedNodes = [];
+                break;
         }
         this.simulation.restart();
     }
@@ -325,6 +334,7 @@ export default class GraphController {
         this.radius = 20;
         this.mouseX = 0;
         this.mouseY = 0;
+        this.simulation = null;
         this.initialNodes = initialNodes;
         this.initialLinks = initialLinks;
         this.nodes = this.initialNodes.map(n => ({...n}));
@@ -334,7 +344,7 @@ export default class GraphController {
         this.to = null;
         this.algorithmOutlinedNodes = [];
         this.algorithmMarkedNodes = [];
-        this.simulation = null;
+        this.isPlaying = false;
     }
     
     addNode(node: Vertex) {
@@ -402,36 +412,141 @@ export default class GraphController {
     }
 
    makeTraceRecorder(): Recorder {
-        const steps: TraceOp[] = [];
-        const trace: VisualTrace = {
-            outline: (nodes: Vertex[]) => 
-                steps.push({ type: Trace.outline, nodes }),
+        const recorder: Recorder = {
+            steps: [],
+            history: [],
+            trace: {
+                outline: (nodes: Vertex[]) => 
+                    recorder.steps.push({ type: Trace.outline, nodes }),
 
-            mark: (nodes: Vertex[], link: LinkDatum) =>
-                steps.push({ type: Trace.mark, nodes, link }),
+                mark: (nodes: Vertex[], link: LinkDatum) =>
+                    recorder.steps.push({ type: Trace.mark, nodes, link }),
 
-            clear: () => steps.push({ type: Trace.clear })
-        };
-        return { steps, trace };
+                clear: () => recorder.steps.push({ type: Trace.clear })
+            }
+        }
+        return recorder;
 
     } 
 
-    async traceRecorderPlayer(steps: TraceOp[], intervalMs: number) {
+    async traceRecorderPlayer(
+        steps: TraceOp[], 
+        history: TraceOp[],
+        intervalMs: number) {
        //TODO: move all Trace logic into VisualTraceController 
         const sleep = (ms: number) => 
             new Promise(resolve => setTimeout(resolve, ms));
         for(const step of steps) {
+            if(!this.isPlaying){
+                history = steps.slice(0, steps.indexOf(step));
+                return steps.slice(steps.indexOf(step));
+            } 
             this.applyTraceStep(step);
             await sleep(intervalMs);
         }
+        history = steps;
+        return [];
     }
-    algorithmPlayer() {
+    visualizer() {
+        console.log('adf:weight', this.isPlaying)
         const recorder = this.makeTraceRecorder();
-        const graph = new Graph(this.nodes, this.links, recorder.trace);
-        graph.kruskal();
-        console.log(recorder.steps)
-        this.traceRecorderPlayer(recorder.steps, 1500);
+        return {
+            /*
+             * purpose:
+             * - generates the steps to mark and outline nodes
+             * in the initial call.
+             * - stores the remaining steps return by
+             * traceRecorderPlayer upon pausing.
+             * - Resumes using the remaining steps.
+             * */
+            play: () => {
+                if(this.isPlaying) return; 
+                if(recorder.steps.length === 0) {
+                    const graph = new Graph(
+                        this.nodes, this.links, recorder.trace);
+                    graph.kruskal();
+                }
+
+                this.isPlaying = true;
+                this.traceRecorderPlayer(
+                    recorder.steps, 
+                    recorder.history,
+                    1500)
+                    .then(remainingSteps => {
+                        recorder.steps = remainingSteps;
+                        this.isPlaying = false;
+                    });
+                        
+            },
+            pause: () => { this.isPlaying = false; },
+            reset: () => {
+                recorder.steps = [];
+                recorder.trace.clear();
+                this.isPlaying = true;
+                this.traceRecorderPlayer(
+                    recorder.steps, 
+                    recorder.history,
+                    0)
+                    .then(remainingSteps => {
+                        this.isPlaying = false;
+                        recorder.steps = remainingSteps;
+                        recorder.history = [];
+                    });
+            },
+            clear: () => {
+                recorder.steps = [];
+                recorder.trace.clear();
+                this.isPlaying = true;
+                this.traceRecorderPlayer(
+                    recorder.steps, 
+                    recorder.history,
+                    0)
+                    .then(remainingSteps => {
+                        this.isPlaying = false;
+                        recorder.steps = remainingSteps;
+                        recorder.history = [];
+                    });
+                this.nodes = [];
+                this.links = [];
+
+            },
+            stepForward: () => {
+                if(this.isPlaying) {
+                    // makes play exit if currently running
+                    this.isPlaying = false;
+                }; 
+                if(recorder.steps.length === 0) {
+                    return;
+                    const graph = new Graph(
+                        this.nodes, this.links, 
+                        recorder.trace);
+                    graph.kruskal();
+                }
+
+                this.isPlaying = true;
+                const step = recorder.steps.shift();
+                if(!step) {
+                    //TODO: call reset here
+                    throw Error('call reset to properly handle this')
+                    return;
+                };
+                recorder.history.push(step);
+                this.traceRecorderPlayer([step], 
+                    [],
+                    0)
+                    .then(_ => this.isPlaying = false);
+
+            },
+            stepBack: () => {
+                const step = recorder.history.pop();
+                if(!step) return;
+                recorder.steps.unshift(step);
+            },
+        };
     }
+
+   
+    
 
     render() {
         this.resize();
