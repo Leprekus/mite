@@ -1,6 +1,7 @@
 import * as d3 from "d3";
 import Graph from "./graph";
 
+export type useSetter<T> = (callback: (prev: T) => T) => T; 
 export enum MSTImplementation {
     Prim,
     Kruskal,
@@ -51,7 +52,7 @@ type Recorder = {
     history: TraceOp[];
     trace: VisualTrace;
 };
-
+const isClean = (r: Recorder) => r.history.length === 0 && r.steps.length === 0;
 export default class GraphController {
     // simulation state
     private canvas: HTMLCanvasElement;
@@ -76,6 +77,9 @@ export default class GraphController {
 
     //player state
     private isPlaying: boolean;
+    private playerStackFrames: string[];
+    private recorderState: [recorder: () => Recorder, setRecorder: useSetter<Recorder>];
+
     private getContext() {
         const context = this.canvas.getContext('2d');
         if(!context) throw new Error('Canvas context is null');
@@ -345,6 +349,10 @@ export default class GraphController {
         this.algorithmOutlinedNodes = [];
         this.algorithmMarkedNodes = [];
         this.isPlaying = false;
+
+
+        this.playerStackFrames = []
+        this.recorderState = this.useRecorder(this.makeTraceRecorder());
     }
     
     addNode(node: Vertex) {
@@ -429,123 +437,186 @@ export default class GraphController {
 
     } 
 
+    useRecorder(initialState: Recorder): [
+    r: () => Recorder,
+    s: useSetter<Recorder>
+] {
+        let state = initialState;
+        const getter = () => ({...state});
+        const setter = (
+            callback: (prev: Recorder) => 
+            Recorder) => {
+                const newState = callback(state);
+                state = newState;
+                return state;
+        };
+
+        return [ getter, setter ];
+    }
+
     async traceRecorderPlayer(
         steps: TraceOp[], 
         history: TraceOp[],
-        intervalMs: number) {
+        intervalMs: number): Promise<[TraceOp[], TraceOp[]]> {
        //TODO: move all Trace logic into VisualTraceController 
         const sleep = (ms: number) => 
             new Promise(resolve => setTimeout(resolve, ms));
         for(const step of steps) {
             if(!this.isPlaying){
-                history = steps.slice(0, steps.indexOf(step));
-                return steps.slice(steps.indexOf(step));
+                const index = steps.indexOf(step);
+                history = [...history, ...steps.slice(0, index)];
+                const remaining = steps.slice(index);
+                return [ history, remaining ];
             } 
             this.applyTraceStep(step);
             await sleep(intervalMs);
         }
         history = steps;
-        return [];
+        return [ history, [] ];
+    }
+    async play(ms: number = 1500) {
+        const [rec, setRecorder] = this.recorderState;
+        const recorder = rec();
+        if(this.isPlaying) {
+            this.popStackFrame();
+            return;
+        };
+        if(isClean(recorder)) {
+            const graph = new Graph(
+                this.nodes, 
+                this.links, recorder.trace);
+            graph.kruskal();
+        }
+        this.isPlaying = true;
+        this.traceRecorderPlayer(recorder.steps,
+            recorder.history, 
+            ms).then(([history, steps]) => {
+                this.pause();
+                const r = setRecorder(_ => ({
+                ...recorder,
+                    history,
+                    steps,
+                }));
+                console.log('play state:', r)
+                this.popStackFrame();
+            });
+    }
+    pause() { this.isPlaying = false; } 
+    stepForward() {
+        const [rec, setRecorder] = this.recorderState;
+        const recorder = rec();
+        const step = recorder.steps.shift(); 
+        console.log(step);
+        if(!step) {
+            this.popStackFrame();
+            return;
+        };
+        recorder.history.push(step);
+        const r = setRecorder(_ => ({ ...recorder }));
+        this.isPlaying = true;
+        this.traceRecorderPlayer([step], [], 0)
+            .then(_ => {
+                this.isPlaying = false;
+                console.log('stepForward state:', r)
+                this.popStackFrame();
+            });
+    }
+    stepBack() {
+        const [rec, setRecorder] = this.recorderState;
+        const recorder = rec();
+        const undo = recorder.history.pop();
+        if(!undo) {
+            this.popStackFrame();
+            return;
+        };
+
+        switch(undo.type) {
+            case Trace.mark:
+                this.algorithmOutlinedNodes = 
+                    this.algorithmOutlinedNodes.length > 0 ? 
+                        [] : 
+                        [...undo.nodes];
+                this.algorithmMarkedNodes = 
+                    this.algorithmMarkedNodes
+                        .filter(n => !undo.nodes
+                            .some(m => m.id === n.id));
+                break;
+            case Trace.outline:
+                this.algorithmOutlinedNodes = [];
+                break;
+        }
+        recorder.steps.unshift(undo);
+        const r = setRecorder(_ => ({...recorder}));
+        this.simulation?.restart();
+        console.log('stepBack state:', r);
+        this.popStackFrame();
+    }
+    reset(recorder: Recorder, setRecorder: useSetter<Recorder>) {
+       
+        if(!recorder.steps) return;
+        this.pause();
+        recorder.trace.clear();
+        const step = recorder.steps.pop()!;
+        const [ pseudoRecorder, pseudoSet ] = this.useRecorder({...recorder, steps: [step], history: []});
+        this.play(pseudoRecorder(), pseudoSet, 0);
+        setRecorder(_ => this.makeTraceRecorder());
+        this.simulation?.restart();
+    }
+    clear(recorder: Recorder, setRecorder: useSetter<Recorder>) {
+        this.reset(recorder, setRecorder);
+        this.links = [];
+        this.nodes = [];
     }
     visualizer() {
-        console.log('adf:weight', this.isPlaying)
-        const recorder = this.makeTraceRecorder();
+        const [recorder, setRecorder] = this.useRecorder(
+            this.makeTraceRecorder()
+        );
+         
         return {
-            /*
-             * purpose:
-             * - generates the steps to mark and outline nodes
-             * in the initial call.
-             * - stores the remaining steps return by
-             * traceRecorderPlayer upon pausing.
-             * - Resumes using the remaining steps.
-             * */
-            play: () => {
-                if(this.isPlaying) return; 
-                if(recorder.steps.length === 0) {
-                    const graph = new Graph(
-                        this.nodes, this.links, recorder.trace);
-                    graph.kruskal();
-                }
-
-                this.isPlaying = true;
-                this.traceRecorderPlayer(
-                    recorder.steps, 
-                    recorder.history,
-                    1500)
-                    .then(remainingSteps => {
-                        recorder.steps = remainingSteps;
-                        this.isPlaying = false;
-                    });
-                        
-            },
-            pause: () => { this.isPlaying = false; },
-            reset: () => {
-                recorder.steps = [];
-                recorder.trace.clear();
-                this.isPlaying = true;
-                this.traceRecorderPlayer(
-                    recorder.steps, 
-                    recorder.history,
-                    0)
-                    .then(remainingSteps => {
-                        this.isPlaying = false;
-                        recorder.steps = remainingSteps;
-                        recorder.history = [];
-                    });
-            },
-            clear: () => {
-                recorder.steps = [];
-                recorder.trace.clear();
-                this.isPlaying = true;
-                this.traceRecorderPlayer(
-                    recorder.steps, 
-                    recorder.history,
-                    0)
-                    .then(remainingSteps => {
-                        this.isPlaying = false;
-                        recorder.steps = remainingSteps;
-                        recorder.history = [];
-                    });
-                this.nodes = [];
-                this.links = [];
-
-            },
+            play: () => this.pushStackFrame('play'),
+            pause: () => this.pause(),
             stepForward: () => {
-                if(this.isPlaying) {
-                    // makes play exit if currently running
-                    this.isPlaying = false;
-                }; 
-                if(recorder.steps.length === 0) {
-                    return;
-                    const graph = new Graph(
-                        this.nodes, this.links, 
-                        recorder.trace);
-                    graph.kruskal();
-                }
-
-                this.isPlaying = true;
-                const step = recorder.steps.shift();
-                if(!step) {
-                    //TODO: call reset here
-                    throw Error('call reset to properly handle this')
-                    return;
-                };
-                recorder.history.push(step);
-                this.traceRecorderPlayer([step], 
-                    [],
-                    0)
-                    .then(_ => this.isPlaying = false);
-
+                this.pushStackFrame('stepForward');
+                this.pause();
             },
             stepBack: () => {
-                const step = recorder.history.pop();
-                if(!step) return;
-                recorder.steps.unshift(step);
+                this.pushStackFrame('stepBack');
+                this.pause();
             },
-        };
+            reset: () => this.reset(recorder(), setRecorder),
+            clear: () => this.clear(recorder(), setRecorder),
+
+        
+        }
     }
 
    
+
+    invokeStackFrame(functionName: string) {
+        switch(functionName) {
+                case 'play':
+                    this.play();
+                    break;
+                case 'stepForward':
+                    this.stepForward();
+                    break;
+                case 'stepBack':
+                    this.stepBack();
+                    break;
+            }
+    }
+    pushStackFrame (functionName: 'string') {
+            this.playerStackFrames.push(functionName);
+            console.log('stack state:', this.playerStackFrames)
+            if(this.playerStackFrames.length > 1) return;
+            this.invokeStackFrame(functionName); 
+    }
+    popStackFrame() {
+        const ret = this.playerStackFrames.shift();
+        const next = this.playerStackFrames[0];
+        if(!next) return;
+        this.invokeStackFrame(next); 
+    }
     
 
     render() {
