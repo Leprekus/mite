@@ -477,6 +477,10 @@ export default class GraphController {
     async play(ms: number = 1500) {
         const [rec, setRecorder] = this.recorderState;
         const recorder = rec();
+        console.log('isPlaying', this.isPlaying);
+        console.log('isClean', isClean(recorder));
+        console.log('nodes', this.nodes);
+        console.log('links', this.links);
         if(this.isPlaying) {
             this.popStackFrame();
             return;
@@ -486,7 +490,8 @@ export default class GraphController {
                 this.nodes, 
                 this.links, recorder.trace);
             graph.kruskal();
-        }
+        } 
+        console.log(recorder);
         this.isPlaying = true;
         this.traceRecorderPlayer(recorder.steps,
             recorder.history, 
@@ -506,7 +511,6 @@ export default class GraphController {
         const [rec, setRecorder] = this.recorderState;
         const recorder = rec();
         const step = recorder.steps.shift(); 
-        console.log(step);
         if(!step) {
             this.popStackFrame();
             return;
@@ -551,21 +555,56 @@ export default class GraphController {
         console.log('stepBack state:', r);
         this.popStackFrame();
     }
-    reset(recorder: Recorder, setRecorder: useSetter<Recorder>) {
+    reset() {
+        const [rec, setRecorder] = this.recorderState;
+        const recorder = rec();
        
-        if(!recorder.steps) return;
+        console.log('reset recorder', recorder);
+        if(recorder.steps.length === 0) {
+            this.popStackFrame();
+            return;
+        };
         this.pause();
         recorder.trace.clear();
         const step = recorder.steps.pop()!;
-        const [ pseudoRecorder, pseudoSet ] = this.useRecorder({...recorder, steps: [step], history: []});
-        this.play(pseudoRecorder(), pseudoSet, 0);
-        setRecorder(_ => this.makeTraceRecorder());
-        this.simulation?.restart();
+        this.isPlaying = true;
+        this.traceRecorderPlayer([step], [], 0)
+            .then(_ => {
+                this.isPlaying = false;
+                const r = setRecorder(_ => this.makeTraceRecorder());
+                console.log('reset state:', r); 
+                this.algorithmOutlinedNodes = [];
+                this.algorithmMarkedNodes = [];
+                this.simulation?.restart();
+                this.popStackFrame();
+            });
     }
-    clear(recorder: Recorder, setRecorder: useSetter<Recorder>) {
-        this.reset(recorder, setRecorder);
+    clear() {
+        //TODO: reuse reset logic
+        const [rec, setRecorder] = this.recorderState;
+        const recorder = rec();
+
+        console.log('clear recorder', recorder);
         this.links = [];
         this.nodes = [];
+        if(recorder.steps.length === 0) {
+            this.popStackFrame();
+            return;
+        };
+        this.pause();
+        recorder.trace.clear();
+        const step = recorder.steps.pop()!;
+        this.isPlaying = true;
+        this.traceRecorderPlayer([step], [], 0)
+            .then(_ => {
+                this.isPlaying = false;
+                const r = setRecorder(_ => this.makeTraceRecorder());
+                console.log('reset state:', r); 
+                this.algorithmOutlinedNodes = [];
+                this.algorithmMarkedNodes = [];
+                this.simulation?.restart();
+                this.popStackFrame();
+            });
     }
     visualizer() {
         const [recorder, setRecorder] = this.useRecorder(
@@ -583,8 +622,14 @@ export default class GraphController {
                 this.pushStackFrame('stepBack');
                 this.pause();
             },
-            reset: () => this.reset(recorder(), setRecorder),
-            clear: () => this.clear(recorder(), setRecorder),
+            reset: () => {
+                this.pushStackFrame('reset');
+                this.pause();
+            },
+            clear: () => {
+                this.pushStackFrame('clear');
+                this.pause();
+            }
 
         
         }
@@ -603,17 +648,24 @@ export default class GraphController {
                 case 'stepBack':
                     this.stepBack();
                     break;
+                case 'reset':
+                    this.reset();
+                    break;
+                case 'clear':
+                    this.clear();
+                    break;
             }
     }
     pushStackFrame (functionName: 'string') {
             this.playerStackFrames.push(functionName);
-            console.log('stack state:', this.playerStackFrames)
+            console.log('pushStackFrame state:', this.playerStackFrames)
             if(this.playerStackFrames.length > 1) return;
             this.invokeStackFrame(functionName); 
     }
     popStackFrame() {
         const ret = this.playerStackFrames.shift();
         const next = this.playerStackFrames[0];
+        console.log('popStackFrame state:', this.playerStackFrames, ret, next);
         if(!next) return;
         this.invokeStackFrame(next); 
     }
