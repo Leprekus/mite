@@ -36,18 +36,26 @@ export enum Trace {
     clear = 'clear'
 };
 
+enum StackFrameAction {
+    Play = 'play',
+    StepForward = 'stepForward',
+    StepBack = 'stepBack',
+    Reset = 'reset',
+    Clear = 'clear',
+} 
+
 export type TraceOp = 
     | { type: Trace.outline, nodes: Vertex[] }
     | { type: Trace.mark, nodes: Vertex[], link: LinkDatum }
     | { type: Trace.clear };
 
 export interface VisualTrace {
-    outline: (nodes: Vertex[]) => void;
-    mark: (nodes: Vertex[], link: LinkDatum) => void;
-    clear: () => void;
+    outline: (recorder: Recorder, nodes: Vertex[]) => void;
+    mark: (recorder: Recorder, nodes: Vertex[], link: LinkDatum) => void;
+    clear: (recorder: Recorder) => void;
 };
 
-type Recorder = {
+export type Recorder = {
     steps: TraceOp[];
     history: TraceOp[];
     trace: VisualTrace;
@@ -77,7 +85,7 @@ export default class GraphController {
 
     //player state
     private isPlaying: boolean;
-    private playerStackFrames: string[];
+    private playerStackFrames: StackFrameAction[];
     private recorderState: [recorder: () => Recorder, setRecorder: useSetter<Recorder>];
 
     private getContext() {
@@ -420,20 +428,20 @@ export default class GraphController {
     }
 
    makeTraceRecorder(): Recorder {
-        const recorder: Recorder = {
+        const instance: Recorder = {
             steps: [],
             history: [],
             trace: {
-                outline: (nodes: Vertex[]) => 
+                outline: (recorder: Recorder, nodes: Vertex[]) =>
                     recorder.steps.push({ type: Trace.outline, nodes }),
 
-                mark: (nodes: Vertex[], link: LinkDatum) =>
+                mark: (recorder: Recorder, nodes: Vertex[], link: LinkDatum) =>
                     recorder.steps.push({ type: Trace.mark, nodes, link }),
 
-                clear: () => recorder.steps.push({ type: Trace.clear })
+                clear: (recorder: Recorder) => recorder.steps.push({ type: Trace.clear })
             }
         }
-        return recorder;
+        return instance;
 
     } 
 
@@ -476,20 +484,26 @@ export default class GraphController {
     }
     async play(ms: number = 1500) {
         const [rec, setRecorder] = this.recorderState;
-        const recorder = rec();
+        let recorder = rec();
         console.log('isPlaying', this.isPlaying);
         console.log('isClean', isClean(recorder));
         console.log('nodes', this.nodes);
         console.log('links', this.links);
         if(this.isPlaying) {
+            console.log('popping')
             this.popStackFrame();
             return;
         };
         if(isClean(recorder)) {
             const graph = new Graph(
                 this.nodes, 
-                this.links, recorder.trace);
+                this.links, 
+                recorder);
+            console.log('recording kruskal')
             graph.kruskal();
+            recorder = {
+                ...graph.getRecorder,
+            };
         } 
         console.log(recorder);
         this.isPlaying = true;
@@ -565,7 +579,7 @@ export default class GraphController {
             return;
         };
         this.pause();
-        recorder.trace.clear();
+        recorder.trace.clear(recorder);
         const step = recorder.steps.pop()!;
         this.isPlaying = true;
         this.traceRecorderPlayer([step], [], 0)
@@ -580,54 +594,34 @@ export default class GraphController {
             });
     }
     clear() {
-        //TODO: reuse reset logic
-        const [rec, setRecorder] = this.recorderState;
-        const recorder = rec();
-
-        console.log('clear recorder', recorder);
+        this.reset();
         this.links = [];
         this.nodes = [];
-        if(recorder.steps.length === 0) {
-            this.popStackFrame();
-            return;
-        };
-        this.pause();
-        recorder.trace.clear();
-        const step = recorder.steps.pop()!;
-        this.isPlaying = true;
-        this.traceRecorderPlayer([step], [], 0)
-            .then(_ => {
-                this.isPlaying = false;
-                const r = setRecorder(_ => this.makeTraceRecorder());
-                console.log('reset state:', r); 
-                this.algorithmOutlinedNodes = [];
-                this.algorithmMarkedNodes = [];
-                this.simulation?.restart();
-                this.popStackFrame();
-            });
+        this.simulation?.restart();
     }
+    
     visualizer() {
-        const [recorder, setRecorder] = this.useRecorder(
-            this.makeTraceRecorder()
-        );
-         
         return {
-            play: () => this.pushStackFrame('play'),
+            play: () => {
+                //TODO: correctly handle this with stack frames
+                if(this.isPlaying) return;
+                this.pushStackFrame(StackFrameAction.Play);
+            },
             pause: () => this.pause(),
             stepForward: () => {
-                this.pushStackFrame('stepForward');
+                this.pushStackFrame(StackFrameAction.StepForward);
                 this.pause();
             },
             stepBack: () => {
-                this.pushStackFrame('stepBack');
+                this.pushStackFrame(StackFrameAction.StepBack);
                 this.pause();
             },
             reset: () => {
-                this.pushStackFrame('reset');
+                this.pushStackFrame(StackFrameAction.Reset);
                 this.pause();
             },
             clear: () => {
-                this.pushStackFrame('clear');
+                this.pushStackFrame(StackFrameAction.Clear);
                 this.pause();
             }
 
@@ -637,26 +631,28 @@ export default class GraphController {
 
    
 
-    invokeStackFrame(functionName: string) {
+    invokeStackFrame(functionName: StackFrameAction) {
         switch(functionName) {
-                case 'play':
+                case StackFrameAction.Play:
                     this.play();
                     break;
-                case 'stepForward':
+                case StackFrameAction.StepForward:
                     this.stepForward();
                     break;
-                case 'stepBack':
+                case StackFrameAction.StepBack:
                     this.stepBack();
                     break;
-                case 'reset':
+                case StackFrameAction.Reset:
                     this.reset();
                     break;
-                case 'clear':
+                case StackFrameAction.Clear:
                     this.clear();
                     break;
             }
     }
-    pushStackFrame (functionName: 'string') {
+    pushStackFrame (functionName: StackFrameAction) {
+            if(this.playerStackFrames
+            .some(action => action === functionName)) return;
             this.playerStackFrames.push(functionName);
             console.log('pushStackFrame state:', this.playerStackFrames)
             if(this.playerStackFrames.length > 1) return;
