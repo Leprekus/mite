@@ -1,4 +1,4 @@
-import { LinkDatum, Vertex, VisualTrace } from "./graph-controller";
+import { LinkDatum, Recorder, Vertex, VisualTrace } from "./graph-controller";
 import UnionFind from "./union-find";
 
 interface Edge extends LinkDatum {
@@ -7,19 +7,24 @@ interface Edge extends LinkDatum {
 export default class Graph {
     private vertices: Vertex[]; 
     private edges: Edge[];
-    private trace: VisualTrace;
+    private recorder: Recorder;
     constructor(
         vertices: Vertex[], 
         edges: LinkDatum[],
-        trace: VisualTrace) {
-        this.trace = trace;
+        recorder: Recorder) {
+        this.recorder = recorder;
         this.vertices = vertices.map(v => ({...v}));
         this.edges = edges.map(e => ({
             ...e, 
             id: (e.source as Vertex).id 
         }));
     }
+    get getRecorder(): Recorder {
+        return this.recorder;
+    }
     kruskal() {
+        console.log('running kruskal')
+        console.log(this.edges, this.vertices)
         const uf = new UnionFind<Vertex>();
         const tree: Edge[] = [];
         this.vertices.map(v => uf.add(v));
@@ -28,13 +33,14 @@ export default class Graph {
         edges.map(e => {
             const from = e.source as Vertex;
             const to = e.target as Vertex;
-            this.trace.outline([from , to]);
+            this.recorder.trace.outline(this.recorder, [from , to]);
             if(uf.find(from).parent !== uf.find(to).parent) {
                 uf.union(from, to);
                 tree.push(e);
-                this.trace.mark([from, to], e);
+                this.recorder.trace.mark(this.recorder, [from, to], e);
             }
         });
+        console.log('kruskal trace', this.recorder);
         return tree;
     }
     prim() {}
