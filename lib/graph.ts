@@ -53,7 +53,7 @@ export default class Graph {
         console.log('kruskal trace', recorder);
         return recorder;
     }
-    prim(): Recorder {}
+    //prim(): Recorder {}
     bellmanFord(recorder: Recorder): Recorder {
         const start = this.vertices[0];
         const distance: {

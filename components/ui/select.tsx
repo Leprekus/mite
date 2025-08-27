@@ -51,7 +51,7 @@ function SelectRoot({ defaultValue = null, onValueChange, children, className }:
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  const ctx: SelectCtx = { open, setOpen, value, setValue, triggerRef, contentId };
+  const ctx: SelectCtx = { open, setOpen, value, setValue, triggerRef: triggerRef as React.RefObject<HTMLButtonElement>, contentId };
 
   return (
     <SelectContext.Provider value={ctx}>
