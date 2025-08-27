@@ -431,6 +431,7 @@ export default class GraphController {
             if(to){
                 this.to = to.id;  
                 this.addLink(this.from, this.to);
+                this.addLink(this.to, this.from);
                 this.from = null;
                 this.to = null;
             }
