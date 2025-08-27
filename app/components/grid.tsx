@@ -22,11 +22,13 @@ enum MediaAction {
 	Clear = 'clear',
 	Reset = 'reset'
 };
+
+const algorithms: AlgorithmName[] = ['bellmanFord', 'kruskal', 'prim', 'dijkstra'];
 export default function Grid() {
 	const canvasRef = useRef<HTMLCanvasElement| null>(null);
 	const visualizerRef = useRef<ReturnType<GraphController['visualizer']> | null>(null);
 	const [isPlaying, setIsPlaying] = useState<boolean>(false);
-  	const [algorithm, setAlgorithm] = useState<string | null>(null);
+  	const [algorithm, setAlgorithm] = useState<AlgorithmName>('kruskal');
 	useEffect(() => {
 		if(!canvasRef.current) return;
 		let nodes: Vertex[] = Array.from({ length: 10 },() => ({
@@ -114,12 +116,14 @@ export default function Grid() {
 
 	};
 	const handleSetAlgorithm = (option: string) => {
-		setAlgorithm(option);
-		visualizerRef.current?.reset(option as AlgorithmName);
+		const opt = option as AlgorithmName;
+		setAlgorithm(opt);
+		handleMedia(MediaAction.Pause);
+		visualizerRef.current?.reset(opt);
 	}
 	return (
 	<div className=''>
-		<div className='flex gap-2'>
+		<div className='flex gap-2 justify-center items-center'>
 
 		<Button onClick={() =>handleMedia(MediaAction.StepBack)}><Undo2/></Button>
 		<Button onClick={() => {
@@ -136,11 +140,17 @@ export default function Grid() {
 		>
 			<Trash/>	
 		</Button>
-		<Select defaultValue={null} onValueChange={handleSetAlgorithm}>
+		<Select defaultValue={algorithm} onValueChange={handleSetAlgorithm}>
 			<Select.Trigger placeholder="Choose an algorithm" />
 			<Select.Content>
-				<Select.Item value="dijkstra">Dijkstra</Select.Item>
-				<Select.Item value="kruskal">Kruskal</Select.Item>
+				{algorithms
+					.map(a => 
+					     <Select.Item 
+					     	value={a}
+						key={a}
+					      >
+					     	{a}
+					     </Select.Item>)}
 			</Select.Content>
 		</Select>
 
