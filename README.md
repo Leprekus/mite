@@ -1,9 +1,7 @@
 # Mite! 「見て!」- Algorithm Visualizer
 
-## About 
-
 Step-through visualizations of classic graph algorithms. Add nodes/edges on a canvas, pick an algorithm, then play, pause, or step through each operation.
-(Live Demo)[]
+[Live Demo](https://vercel.com/raul-rodriguezs-projects-0829844f/mite/9PJB96rVnpJCLPgKCFDhmeojQ3sx)
 
 ## Features
 
@@ -37,5 +35,10 @@ bun dev
 ## Tech Stack
 
 Built wit Next.Js 15, Tailwind, Typescript, and D3 Library.
+
+
+## Projet Structure
+
+TODO
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
