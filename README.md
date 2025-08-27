@@ -34,4 +34,8 @@ pnpm dev
 bun dev
 ```
 
+## Tech Stack
+
+Built wit Next.Js 15, Tailwind, Typescript, and D3 Library.
+
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.

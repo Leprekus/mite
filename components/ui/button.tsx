@@ -1,10 +1,7 @@
-import { forwardRef } from "react";
+import { ButtonHTMLAttributes, forwardRef } from "react";
 import { cn } from '@/lib/utils';
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  // add any custom props here
-}
 
-const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+const Button = forwardRef<HTMLButtonElement, ButtonHTMLAttributes<HTMLButtonElement>>(
   ({ children, className = '', ...props }, ref) => {
     return (
       <button 
@@ -21,8 +18,6 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     );
   }
 );
-
 Button.displayName = "Button";
-
 export default Button;
 

@@ -2,6 +2,7 @@ import { Play } from "next/font/google";
 import { LinkDatum, Recorder, Vertex, VisualTrace } from "./graph-controller";
 import UnionFind from "./union-find";
 
+//@ts-ignore
 type MethodKeys<T> = {
   [K in keyof T]-?: T[K] extends (...args: any[]) => any ? K : never
 }[keyof T];

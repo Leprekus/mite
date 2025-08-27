@@ -96,8 +96,7 @@ const SelectTrigger = React.forwardRef<HTMLButtonElement, TriggerProps>(
 SelectTrigger.displayName = "SelectTrigger";
 
 // Content (dropdown panel)
-interface ContentProps extends React.HTMLAttributes<HTMLDivElement> {}
-const SelectContent = React.forwardRef<HTMLDivElement, ContentProps>(({ className = "", ...props }, ref) => {
+const SelectContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(({ className = "", ...props }, ref) => {
   const { open, contentId } = useSelectCtx();
   if (!open) return null;
   return (

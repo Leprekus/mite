@@ -2,12 +2,9 @@
 import Button from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { AlgorithmName } from '@/lib/graph';
-import GraphController, { LinkDatum, MSTImplementation, StackFrameAction, Vertex } from '@/lib/graph-controller';
-import { Pause, Play, Redo2, RedoDot, RotateCcw, Trash, Undo2, UndoDot } from 'lucide-react';
-import { forwardRef, useEffect, useRef, useState } from "react";
-
-const menuItems = ['Start', 'Step Forward', 'Step Back', 'Clear', 'Reset'];
-//type Selection<T extends d3.BaseType> = d3.Selection<T, unknown, null, undefined>;
+import GraphController, { LinkDatum, Vertex } from '@/lib/graph-controller';
+import { Pause, Play, Redo2, RotateCcw, Trash, Undo2 } from 'lucide-react';
+import { useEffect, useRef, useState } from "react";
 
 enum Keys {
 	x = 'x',
@@ -31,7 +28,7 @@ export default function Grid() {
   	const [algorithm, setAlgorithm] = useState<AlgorithmName>('kruskal');
 	useEffect(() => {
 		if(!canvasRef.current) return;
-		let nodes: Vertex[] = Array.from({ length: 10 },() => ({
+		const nodes: Vertex[] = Array.from({ length: 10 },() => ({
 			id: crypto.randomUUID(),
 			x: (Math.random() * 2) - 1,
 			y: (Math.random() * 2) - 1,
