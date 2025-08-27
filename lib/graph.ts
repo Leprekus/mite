@@ -1,10 +1,8 @@
-import { Play } from "next/font/google";
-import { LinkDatum, Recorder, Vertex, VisualTrace } from "./graph-controller";
+import { LinkDatum, Recorder, Vertex } from "./graph-controller";
 import UnionFind from "./union-find";
 
-//@ts-expect-error
 type MethodKeys<T> = {
-  [K in keyof T]-?: T[K] extends (...args: any[]) => any ? K : never
+  [K in keyof T]-?: T[K] extends (...args: infer _A) => unknown ? K : never
 }[keyof T];
 
 export type AlgorithmName = MethodKeys<Graph>;
