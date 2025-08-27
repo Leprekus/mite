@@ -80,8 +80,9 @@ export default class GraphController {
     private nodeToRemove: string | null;
     private from: string | null;
     private to: string | null;
-    private algorithmMarkedNodes: Vertex[];
     private algorithmOutlinedNodes: Vertex[];
+    private algorithmMarkedEdges: LinkDatum[];
+    private algorithmMarkedNodes: Vertex[];
     private algorithm : AlgorithmName;
 
     //player state
@@ -125,17 +126,28 @@ export default class GraphController {
     }
     
     private outlineAlgorithmNodes() {
-        const algorithmOutlineFill = 'oklch(75% 0.183 55.934)';
+        const algorithmOutlineFill = 'oklch(51.4% 0.222 16.935)';
         this.algorithmOutlinedNodes .forEach(n => 
             this.outlineNode(n.id, algorithmOutlineFill));
 
     }
 
     private markAlgorithmNodes() {
-        const algorithmMarkedFill = 'oklch(72.3% 0.219 149.579)';
+        const algorithmMarkedFill = 'oklch(94.1% 0.03 12.58)';
         this.algorithmMarkedNodes.forEach(n =>
             this.markNode(n.id, algorithmMarkedFill));
 
+    }
+
+    private markAlgorithmEdges() {
+        const edgeStrokeFill = 'oklch(71.2% 0.194 13.428)';
+        this.algorithmMarkedEdges.forEach(({
+            source,
+            target
+        }) =>
+            this.markEdge((source as Vertex).id, 
+                    (target as Vertex).id, 
+                    edgeStrokeFill));
     }
     private SimulationInit() {
         return d3.forceSimulation(this.nodes)
@@ -150,7 +162,7 @@ export default class GraphController {
                 for(const d of this.links) {
                     if(
                         typeof d.source === 'number' ||
-                            typeof d.target === 'number'
+                        typeof d.target === 'number'
                     ) throw Error('Expected a vertex, found number')
                     this.context.moveTo(d.source.x, d.source.y);
                     this.context.lineTo(d.target.x, d.target.y);
@@ -165,12 +177,13 @@ export default class GraphController {
                     this.context.moveTo(d.x + this.radius, d.y);
                     this.context.arc(d.x, d.y, this.radius, 0, 2 * Math.PI);
                 }
-                this.context.fillStyle = 'oklch(55.6% 0 0)';
+                this.context.fillStyle = '#D6D6D6';
                 this.context.fill();
                 this.context.strokeStyle = '#fff';
                 this.context.stroke();
 
                 
+                this.markAlgorithmEdges();
                 this.outlineAlgorithmNodes();
                 this.markAlgorithmNodes();
                 this.markUserSelectedNodes();
@@ -254,7 +267,7 @@ export default class GraphController {
         this.context.moveTo(node.x + this.radius, node.y);
         this.context.arc(node.x, node.y, this.radius, 0, 2 * Math.PI);
         this.context.strokeStyle = color;
-        this.context.lineWidth = 7;
+        this.context.lineWidth = 3;
         this.context.stroke();
     }
     /*
@@ -273,6 +286,18 @@ export default class GraphController {
         this.context.fill();
     }
 
+    private markEdge(sourceId: string, targetId: string, color: string) {
+        const source = this.nodes.find(n => n.id === sourceId);
+        const target = this.nodes.find(n => n.id === targetId);
+        if (!source || !target) return;
+
+        this.context.beginPath();
+        this.context.moveTo(source.x, source.y);
+        this.context.lineTo(target.x, target.y);
+        this.context.strokeStyle = color;
+        this.context.lineWidth = 3; 
+        this.context.stroke();
+    }
     private drawLinkWeight(
             source: Vertex, 
             target: Vertex, 
@@ -327,6 +352,10 @@ export default class GraphController {
                 ].filter((n, i, self) => 
                     i === self.findIndex(
                             m => n.id === m.id)); 
+                this.algorithmMarkedEdges = [
+                    ...this.algorithmMarkedEdges,
+                    op.link
+                ]
                 break;
             case Trace.clear: 
                 this.algorithmOutlinedNodes = []; 
@@ -357,6 +386,7 @@ export default class GraphController {
         this.to = null;
         this.algorithmOutlinedNodes = [];
         this.algorithmMarkedNodes = [];
+        this.algorithmMarkedEdges = [];
         this.algorithm = 'kruskal';
         this.isPlaying = false;
 
@@ -500,11 +530,11 @@ export default class GraphController {
             const graph = new Graph(
                 this.nodes, 
                 this.links, 
-                recorder);
+                );
             console.log('recording', this.algorithm);
-            graph[this.algorithm]();
+            
             recorder = {
-                ...graph.getRecorder,
+                ...graph[this.algorithm](recorder)
             };
         } 
         console.log(recorder);
@@ -560,6 +590,16 @@ export default class GraphController {
                     this.algorithmMarkedNodes
                         .filter(n => !undo.nodes
                             .some(m => m.id === n.id));
+                this.algorithmMarkedEdges = 
+                    this.algorithmMarkedEdges
+                        .filter(e => {
+                            const source = e.source as Vertex;
+                            const target = e.target as Vertex;
+                            const sourceUndo = undo.link.source as Vertex;
+                            const targetUndo = undo.link.target as Vertex;
+                            return source.id !== sourceUndo.id || 
+                                   target.id !== targetUndo.id;
+                    });
                 break;
             case Trace.outline:
                 this.algorithmOutlinedNodes = [];
@@ -591,6 +631,7 @@ export default class GraphController {
                 console.log('reset state:', r); 
                 this.algorithmOutlinedNodes = [];
                 this.algorithmMarkedNodes = [];
+                this.algorithmMarkedEdges = [];
                 this.simulation?.restart();
                 this.popStackFrame();
             });
