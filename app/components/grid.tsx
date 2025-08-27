@@ -1,6 +1,7 @@
 'use client'
 import Button from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { AlgorithmName } from '@/lib/graph';
 import GraphController, { LinkDatum, MSTImplementation, StackFrameAction, Vertex } from '@/lib/graph-controller';
 import { Pause, Play, Redo2, RedoDot, RotateCcw, Trash, Undo2, UndoDot } from 'lucide-react';
 import { forwardRef, useEffect, useRef, useState } from "react";
@@ -114,6 +115,7 @@ export default function Grid() {
 	};
 	const handleSetAlgorithm = (option: string) => {
 		setAlgorithm(option);
+		visualizerRef.current?.reset(option as AlgorithmName);
 	}
 	return (
 	<div className=''>
@@ -137,8 +139,8 @@ export default function Grid() {
 		<Select defaultValue={null} onValueChange={handleSetAlgorithm}>
 			<Select.Trigger placeholder="Choose an algorithm" />
 			<Select.Content>
-				<Select.Item value="Dijkstra">Dijkstra</Select.Item>
-				<Select.Item value="Kruskal">Kruskal</Select.Item>
+				<Select.Item value="dijkstra">Dijkstra</Select.Item>
+				<Select.Item value="kruskal">Kruskal</Select.Item>
 			</Select.Content>
 		</Select>
 
