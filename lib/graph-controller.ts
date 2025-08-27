@@ -1,5 +1,5 @@
 import * as d3 from "d3";
-import Graph from "./graph";
+import Graph, { AlgorithmName } from "./graph";
 
 export type useSetter<T> = (callback: (prev: T) => T) => T; 
 export enum MSTImplementation {
@@ -36,7 +36,7 @@ export enum Trace {
     clear = 'clear'
 };
 
-enum StackFrameAction {
+export enum StackFrameAction {
     Play = 'play',
     StepForward = 'stepForward',
     StepBack = 'stepBack',
@@ -82,6 +82,7 @@ export default class GraphController {
     private to: string | null;
     private algorithmMarkedNodes: Vertex[];
     private algorithmOutlinedNodes: Vertex[];
+    private algorithm : AlgorithmName;
 
     //player state
     private isPlaying: boolean;
@@ -356,6 +357,7 @@ export default class GraphController {
         this.to = null;
         this.algorithmOutlinedNodes = [];
         this.algorithmMarkedNodes = [];
+        this.algorithm = 'kruskal';
         this.isPlaying = false;
 
 
@@ -499,8 +501,8 @@ export default class GraphController {
                 this.nodes, 
                 this.links, 
                 recorder);
-            console.log('recording kruskal')
-            graph.kruskal();
+            console.log('recording', this.algorithm);
+            graph[this.algorithm]();
             recorder = {
                 ...graph.getRecorder,
             };
@@ -599,6 +601,7 @@ export default class GraphController {
         this.nodes = [];
         this.simulation?.restart();
     }
+
     
     visualizer() {
         return {
@@ -616,15 +619,15 @@ export default class GraphController {
                 this.pushStackFrame(StackFrameAction.StepBack);
                 this.pause();
             },
-            reset: () => {
+            reset: (option?: AlgorithmName) => {
+                if(option) this.algorithm = option;
                 this.pushStackFrame(StackFrameAction.Reset);
                 this.pause();
             },
             clear: () => {
                 this.pushStackFrame(StackFrameAction.Clear);
                 this.pause();
-            }
-
+            },
         
         }
     }
