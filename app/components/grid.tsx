@@ -20,7 +20,7 @@ enum MediaAction {
 	Reset = 'reset'
 };
 
-const algorithms: AlgorithmName[] = ['bellmanFord', 'kruskal', 'dijkstra'];
+const algorithms: AlgorithmName[] = ['bellmanFord', 'prim', 'kruskal', 'dijkstra'];
 export default function Grid() {
 	const canvasRef = useRef<HTMLCanvasElement| null>(null);
 	const visualizerRef = useRef<ReturnType<GraphController['visualizer']> | null>(null);
