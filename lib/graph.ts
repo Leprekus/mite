@@ -53,7 +53,34 @@ export default class Graph {
         console.log('kruskal trace', recorder);
         return recorder;
     }
-    //prim(): Recorder {}
+    prim(recorder: Recorder): Recorder {
+        const visited = new Set<Vertex>();
+        const tree: Edge[] = [];
+        const edges = [...this.edges].sort((a, b) => a.weight - b.weight);
+        for(const u of this.vertices) {
+            recorder.trace.outline(recorder, [u]);
+            if(visited.has(u)) continue;
+            visited.add(u);
+            edges.forEach(e => {
+                //add v adjacent to u
+                const v = e.source.id === u.id ? 
+                    e.target : e.source; 
+                recorder.trace.outline(recorder, [v]);
+                if(!visited.has(v)) {
+                    visited.add(v);
+                    tree.push(e);
+                    recorder.trace.mark(recorder, [u, v], e);
+                }
+            });
+            //while(edges.length > 1 && tree.length < this.vertices.length - 1) {
+            //    const e = edges.pop()!;
+            //    const u = e.source;
+            //    const v = e.target;
+            //}
+
+        }
+        return recorder;
+    }
     bellmanFord(recorder: Recorder): Recorder {
         const start = this.vertices[0];
         const distance: {
